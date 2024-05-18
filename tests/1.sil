@@ -1,0 +1,3 @@
+!!!P DIGIT [0-9a-z]asdf?
+!!!P INT {DIGIT}+
+!!!P NZINT {DIGIT}*[1-9]{DIGIT}*
