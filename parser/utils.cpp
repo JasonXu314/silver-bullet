@@ -57,7 +57,7 @@ AST::PatternNode* parser::parsePattern(lexer::TokenStream& tokens) {
 			throw domain_error("Expected whitespace");
 		}
 	} else {
-		throw domain_error("Expected '!!!P'");
+		throw domain_error("Expected '!!!P', got '" + token.raw + "'");
 	}
 }
 
@@ -104,7 +104,165 @@ AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 					}
 					break;
 				}
+				case '+': {
+					if (literal != nullptr) {
+						parts.push_back(literal);
+						literal = nullptr;
+					} else if (parts.size() == 0) {
+						throw domain_error("Unexpected '?' in regex pattern");
+					}
+
+					AST::Node* last = parts.back();
+					parts.pop_back();
+
+					if (last->type == "primitive::regex_literal") {
+						char lastChar = last->as<AST::RegexLiteralNode>()->str()->back();
+						last->as<AST::RegexLiteralNode>()->str()->pop_back();
+						parts.push_back(last);
+
+						string* charStr = new string();
+						charStr->push_back(lastChar);
+						parts.push_back(new AST::RegexRepeatNode(1, AST::RegexRepeatNode::INFTY, new AST::RegexLiteralNode(charStr)));
+					} else {
+						parts.push_back(new AST::RegexRepeatNode(1, AST::RegexRepeatNode::INFTY, last));
+					}
+					break;
+				}
+				case '*': {
+					if (literal != nullptr) {
+						parts.push_back(literal);
+						literal = nullptr;
+					} else if (parts.size() == 0) {
+						throw domain_error("Unexpected '?' in regex pattern");
+					}
+
+					AST::Node* last = parts.back();
+					parts.pop_back();
+
+					if (last->type == "primitive::regex_literal") {
+						char lastChar = last->as<AST::RegexLiteralNode>()->str()->back();
+						last->as<AST::RegexLiteralNode>()->str()->pop_back();
+						parts.push_back(last);
+
+						string* charStr = new string();
+						charStr->push_back(lastChar);
+						parts.push_back(new AST::RegexRepeatNode(0, AST::RegexRepeatNode::INFTY, new AST::RegexLiteralNode(charStr)));
+					} else {
+						parts.push_back(new AST::RegexRepeatNode(0, AST::RegexRepeatNode::INFTY, last));
+					}
+					break;
+				}
+				case '{': {
+					tokens.read(true);
+					token = tokens.peek(true);
+
+					if (isdigit(token.raw[0])) {
+						if (literal != nullptr) {
+							parts.push_back(literal);
+							literal = nullptr;
+						} else if (parts.size() == 0) {
+							throw domain_error("Unexpected range repeat in regex pattern");
+						}
+
+						string min, max;
+
+						do {
+							tokens.read(true);
+							min += token.raw;
+							token = tokens.peek(true);
+						} while (isdigit(token.raw[0]));
+
+						if (token.raw[0] == ',') {
+							tokens.read(true);
+							token = tokens.peek(true);
+
+							if (isdigit(token.raw[0])) {
+								do {
+									tokens.read(true);
+									max += token.raw;
+									token = tokens.peek(true);
+								} while (isdigit(token.raw[0]));
+							} else if (token.raw[0] == '}') {
+								max = "infty";
+							} else {
+								throw domain_error("Expected integer or '}' after ',' in range repeat");
+							}
+						}
+
+						AST::Node* last = parts.back();
+						parts.pop_back();
+
+						if (last->type == "primitive::regex_literal") {
+							char lastChar = last->as<AST::RegexLiteralNode>()->str()->back();
+							last->as<AST::RegexLiteralNode>()->str()->pop_back();
+							parts.push_back(last);
+
+							string* charStr = new string();
+							charStr->push_back(lastChar);
+							parts.push_back(new AST::RegexRepeatNode(stoi(min), max == "infty" ? AST::RegexRepeatNode::INFTY : stoi(max),
+																	 new AST::RegexLiteralNode(charStr)));
+						} else {
+							parts.push_back(new AST::RegexRepeatNode(stoi(min), max == "infty" ? AST::RegexRepeatNode::INFTY : stoi(max), last));
+						}
+					}
+					// add case here for x{,n} syntax
+					else {
+						if (literal != nullptr) {
+							parts.push_back(literal);
+							literal = nullptr;
+						}
+
+						string name;
+
+						do {
+							tokens.read(true);
+							name += token.raw;
+							token = tokens.peek(true);
+						} while (isalnum(token.raw[0]) || token.raw[0] == '_');
+
+						parts.push_back(new AST::RegexPatternRefNode(new string(name)));
+					}
+					break;
+				}
 				default: {
+					if (token.raw[0] == '\\') {
+						tokens.read(true);
+						token = tokens.peek(true);
+
+						switch (token.raw[0]) {
+							case 'n':
+								token.raw[0] = '\n';
+								break;
+							case 'r':
+								token.raw[0] = '\r';
+								break;
+							case '0':
+								token.raw[0] = '\0';
+								break;
+							case 't':
+								token.raw[0] = '\t';
+								break;
+							case '\\':
+								token.raw[0] = '\\';
+								break;
+							case ']':
+								token.raw[0] = ']';
+								break;
+							case '-':
+								token.raw[0] = '-';
+								break;
+							case '+':
+								token.raw[0] = '+';
+								break;
+							case '{':
+								token.raw[0] = '{';
+								break;
+							case '}':
+								token.raw[0] = '}';
+								break;
+						}
+					}
+
 					if (literal == nullptr) {
 						literal = new AST::RegexLiteralNode(new string(token.raw));
 					} else {
@@ -164,6 +322,15 @@ AST::RegexRangeNode* parser::parseRange(lexer::TokenStream& tokens) {
 							break;
 						case '-':
 							chars += '-';
+							break;
+						case '+':
+							chars += '+';
+							break;
+						case '{':
+							chars += '{';
+							break;
+						case '}':
+							chars += '}';
 							break;
 					}
 				} else if (token.raw[0] == '-') {

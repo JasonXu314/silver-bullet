@@ -95,5 +95,5 @@ void TokenStream::_read(bool raw) {
 }
 
 TokenStream::operator bool() const {
-	return !_stream.fail();
+	return !_stream.fail() && _stream.peek() != EOF;
 }

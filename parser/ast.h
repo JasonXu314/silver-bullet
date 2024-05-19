@@ -39,6 +39,8 @@ public:
 	LeafNode(const std::string& type) : Node(type), _data(nullptr) {}
 	LeafNode(const std::string& type, void* data) : Node(type), _data(data) {}
 
+	virtual ~LeafNode() { free(_data); }
+
 protected:
 	void* _data;
 
@@ -50,7 +52,7 @@ public:
 	InternalNode(const std::string& type) : Node(type) {}
 	InternalNode(const std::string& type, const std::vector<Node*> children) : Node(type), _children(children) {}
 
-	std::vector<Node*> children() const { return _children; }
+	std::vector<Node*>& children() { return _children; }
 
 	InternalNode& append(Node* child);
 
@@ -103,6 +105,13 @@ public:
 
 protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
+};
+
+class RegexPatternRefNode : public LeafNode {
+public:
+	RegexPatternRefNode(std::string* name) : LeafNode("primitive::pattern_ref", name) {}
+
+	std::string* name() const { return reinterpret_cast<std::string*>(_data); }
 };
 
 class PatternNode : public InternalNode {

@@ -1,3 +1,5 @@
-!!!P DIGIT [0-9a-z]asdf?
+!!!P DIGIT [0-9]
 !!!P INT {DIGIT}+
 !!!P NZINT {DIGIT}*[1-9]{DIGIT}*
+!!!P DEC {INT}.{INT}
+!!!P SCI {DEC}e\+{NZINT}

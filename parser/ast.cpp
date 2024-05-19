@@ -18,9 +18,10 @@ ostream& AST::LeafNode::_print(std::ostream& os, unsigned int level) const {
 ostream& AST::InternalNode::_print(ostream& os, unsigned int level) const {
 	indent(os, level) << "PARENT: " << type << endl;
 
-	for (const Node* child : _children) {
+	for (size_t i = 0; i < _children.size(); i++) {
+		auto child = _children[i];
 		child->_print(os, level + 1);
-		if (child != _children.back()) os << "\n";
+		if (i < _children.size() - 1) os << "\n";
 	}
 
 	return os;
@@ -29,9 +30,10 @@ ostream& AST::InternalNode::_print(ostream& os, unsigned int level) const {
 ostream& AST::RegexNode::_print(ostream& os, unsigned int level) const {
 	indent(os, level) << "REGEX:" << endl;
 
-	for (const Node* child : _children) {
+	for (size_t i = 0; i < _children.size(); i++) {
+		auto child = _children[i];
 		child->_print(os, level + 1);
-		if (child != _children.back()) os << "\n";
+		if (i < _children.size() - 1) os << "\n";
 	}
 
 	return os;
@@ -48,9 +50,10 @@ ostream& AST::RegexRangeNode::_print(std::ostream& os, unsigned int level) const
 ostream& AST::RegexRepeatNode::_print(ostream& os, unsigned int level) const {
 	indent(os, level) << "REGEX REPEAT: [" << min << ", " << max << "]" << endl;
 
-	for (const Node* child : _children) {
+	for (size_t i = 0; i < _children.size(); i++) {
+		auto child = _children[i];
 		child->_print(os, level + 1);
-		if (child != _children.back()) os << "\n";
+		if (i < _children.size() - 1) os << "\n";
 	}
 
 	return os;

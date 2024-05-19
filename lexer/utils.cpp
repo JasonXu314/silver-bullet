@@ -35,7 +35,7 @@ lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rul
 	}
 
 	dfa.numStates = 0;
-	dfa.maxStates = 1 << (nfa.numStates / 2);
+	dfa.maxStates = nfa.numStates * nfa.numStates;
 
 	dfa.next = new size_t[dfa.maxStates * 256];
 	dfa.accept = new size_t[dfa.maxStates];
@@ -105,16 +105,10 @@ lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rul
 				makeTransition(dfa, next, nextState, c);
 			}
 
-			bool uniqueAccept = false;
 			for (size_t state : resultClosure) {
-				if (nfa.accept[state]) {
-					if (uniqueAccept) {
-						dfa.accept[nextState] = 0;
-						break;
-					} else {
-						dfa.accept[nextState] = nfa.accept[state];
-						uniqueAccept = true;
-					}
+				// no need to check truthiness because everything > 0
+				if (nfa.accept[state] > dfa.accept[nextState]) {
+					dfa.accept[nextState] = nfa.accept[state];
 				}
 			}
 		}
@@ -178,6 +172,8 @@ void lexer::makeNFA(Tables& tables, parser::AST::Node* regex, size_t start, size
 				}
 
 				makeNFA(tables, node->children()[0], nextStart, ksStart);
+			} else {
+				makeTransition(tables, start, ksStart, EOF);
 			}
 
 			size_t ksEnd = makeState(tables);
@@ -189,6 +185,7 @@ void lexer::makeNFA(Tables& tables, parser::AST::Node* regex, size_t start, size
 			makeTransition(tables, internalEnd, internalStart, EOF);
 
 			makeNFA(tables, node->children()[0], internalStart, internalEnd);
+			makeTransition(tables, ksEnd, end, EOF);
 		} else {
 			for (int times = node->min; times <= node->max; times++) {
 				if (times == 0) {
@@ -221,6 +218,8 @@ void lexer::makeNFA(Tables& tables, parser::AST::Node* regex, size_t start, size
 		}
 
 		makeTransition(tables, nextStart, end, EOF);
+	} else if (regex->type == "primtive::pattern_ref") {
+		throw domain_error("Table generation attempted before pattern dereferencing (or pattern reference not found)");
 	}
 }
 
@@ -244,22 +243,36 @@ void lexer::expand(Tables& tables) {
 	if (tables.numStates == tables.maxStates) {
 		size_t* next = new size_t[tables.maxStates * 2 * 256];
 		size_t* accept = new size_t[tables.maxStates * 2];
+		EpsTrans** epsilon = tables.epsilon != nullptr ? new EpsTrans*[tables.maxStates * 2] : nullptr;
+
+		bzero(next, tables.maxStates * 2 * 256 * sizeof(size_t));
+		bzero(accept, tables.maxStates * 2 * sizeof(size_t));
+		if (epsilon != nullptr) {
+			bzero(epsilon, tables.maxStates * 2 * sizeof(EpsTrans*));
+		}
 
 		for (size_t i = 0; i < tables.maxStates * 256; i++) {
 			next[i] = tables.next[i];
 		}
 
-		for (size_t i = 0; i < tables.maxStates * 2; i++) {
+		for (size_t i = 0; i < tables.maxStates; i++) {
 			accept[i] = tables.accept[i];
 		}
 
-		freeTables(tables);
+		if (epsilon != nullptr) {
+			for (size_t i = 0; i < tables.maxStates; i++) {
+				epsilon[i] = tables.epsilon[i];
+			}
+		}
 
-		bzero(next, tables.maxStates * 2 * 256 * sizeof(size_t));
-		bzero(accept, tables.maxStates * 2 * sizeof(size_t));
+		freeTables(tables);
+		if (tables.epsilon != nullptr) {
+			delete[] tables.epsilon;
+		}
 
 		tables.next = next;
 		tables.accept = accept;
+		tables.epsilon = epsilon;
 		tables.maxStates *= 2;
 	}
 }
