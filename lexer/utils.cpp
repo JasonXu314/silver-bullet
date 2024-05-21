@@ -106,13 +106,27 @@ lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rul
 			}
 
 			for (size_t state : resultClosure) {
-				// no need to check truthiness because everything > 0
-				if (nfa.accept[state] > dfa.accept[nextState]) {
+				if (nfa.accept[state] && (!dfa.accept[nextState] || nfa.accept[state] < dfa.accept[nextState])) {
 					dfa.accept[nextState] = nfa.accept[state];
 				}
 			}
 		}
 	}
+
+	delete[] closureMap;
+	for (size_t i = 0; i < nfa.numStates; i++) {
+		if (nfa.epsilon[i] != nullptr) {
+			EpsTrans* node = nfa.epsilon[i];
+
+			do {
+				EpsTrans* next = node->next;
+				delete node;
+				node = next;
+			} while (node != nullptr);
+		}
+	}
+	delete[] nfa.epsilon;
+	freeTables(nfa);
 
 	return dfa;
 }
@@ -284,6 +298,7 @@ void lexer::expand(set<size_t>*& map, size_t& size, size_t target) {
 		newMap[i] = map[i];
 	}
 
+	delete[] map;
 	map = newMap;
 	size = target;
 }
@@ -291,4 +306,30 @@ void lexer::expand(set<size_t>*& map, size_t& size, size_t target) {
 void lexer::freeTables(const Tables& tables) {
 	delete[] tables.next;
 	delete[] tables.accept;
+}
+
+lexer::Tables lexer::initPrimitives() {
+	using namespace parser;
+
+	vector<AST::PatternNode*> rules;
+
+	rules.push_back(new AST::PatternNode("primitive::pattern", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!P"))})));
+	string *every = new string(), *space = new string();
+	// again, ignore eof
+	for (unsigned char c = 0; c < 255; c++) {
+		every->push_back(c);
+		if (isspace(c)) {
+			space->push_back(c);
+		}
+	}
+	rules.push_back(new AST::PatternNode("primitive::ws", new AST::RegexNode({new AST::RegexRangeNode(space)})));
+	rules.push_back(new AST::PatternNode("raw", new AST::RegexNode({new AST::RegexRangeNode(every)})));
+
+	Tables tables = generateTables(rules);
+
+	for (auto rule : rules) {
+		delete rule;
+	}
+
+	return tables;
 }

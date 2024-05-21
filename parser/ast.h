@@ -6,10 +6,13 @@
 #include <string>
 #include <vector>
 
+std::ostream& indent(std::ostream& stream, unsigned int level);
+
 namespace parser {
 namespace AST {
 class Node {
 public:
+	template <class DT>
 	friend class LeafNode;
 	friend class InternalNode;
 	friend class RegexNode;
@@ -34,17 +37,18 @@ protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const = 0;
 };
 
+template <class DT>
 class LeafNode : public Node {
 public:
 	LeafNode(const std::string& type) : Node(type), _data(nullptr) {}
-	LeafNode(const std::string& type, void* data) : Node(type), _data(data) {}
+	LeafNode(const std::string& type, DT* data) : Node(type), _data(data) {}
 
-	virtual ~LeafNode() { free(_data); }
+	virtual ~LeafNode() { delete _data; }
 
 protected:
-	void* _data;
+	DT* _data;
 
-	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
+	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override { return indent(os, level) << "LEAF: " << type; }
 };
 
 class InternalNode : public Node {
@@ -55,6 +59,8 @@ public:
 	std::vector<Node*>& children() { return _children; }
 
 	InternalNode& append(Node* child);
+
+	virtual ~InternalNode();
 
 protected:
 	std::vector<Node*> _children;
@@ -70,21 +76,21 @@ protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
 };
 
-class RegexLiteralNode : public LeafNode {
+class RegexLiteralNode : public LeafNode<std::string> {
 public:
 	RegexLiteralNode(std::string* raw) : LeafNode("primitive::regex_literal", raw) {}
 
-	std::string* str() const { return reinterpret_cast<std::string*>(_data); }
+	std::string* str() const { return _data; }
 
 protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
 };
 
-class RegexRangeNode : public LeafNode {
+class RegexRangeNode : public LeafNode<std::string> {
 public:
 	RegexRangeNode(std::string* raw) : LeafNode("primitive::regex_range", raw) {}
 
-	std::string* chars() const { return reinterpret_cast<std::string*>(_data); }
+	std::string* chars() const { return _data; }
 
 protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
@@ -107,11 +113,11 @@ protected:
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const override;
 };
 
-class RegexPatternRefNode : public LeafNode {
+class RegexPatternRefNode : public LeafNode<std::string> {
 public:
 	RegexPatternRefNode(std::string* name) : LeafNode("primitive::pattern_ref", name) {}
 
-	std::string* name() const { return reinterpret_cast<std::string*>(_data); }
+	std::string* name() const { return _data; }
 };
 
 class PatternNode : public InternalNode {

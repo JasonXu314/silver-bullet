@@ -45,6 +45,8 @@ void expand(Tables& tables);
 void expand(std::set<std::size_t>*& map, std::size_t& size, std::size_t target);
 
 void freeTables(const Tables& tables);
+
+Tables initPrimitives();
 }  // namespace lexer
 
 #endif

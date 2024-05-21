@@ -5,14 +5,16 @@
 using namespace std;
 using namespace parser;
 
+AST::InternalNode::~InternalNode() {
+	for (auto child : _children) {
+		delete child;
+	}
+}
+
 AST::InternalNode& AST::InternalNode::append(Node* child) {
 	_children.push_back(child);
 
 	return *this;
-}
-
-ostream& AST::LeafNode::_print(std::ostream& os, unsigned int level) const {
-	return indent(os, level) << "LEAF: " << type;
 }
 
 ostream& AST::InternalNode::_print(ostream& os, unsigned int level) const {
