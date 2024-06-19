@@ -2,4 +2,6 @@
 !!!P INT {DIGIT}+
 !!!P NZINT {DIGIT}*[1-9]{DIGIT}*
 !!!P DEC {INT}.{INT}
-!!!P SCI {DEC}e\+{NZINT}
+!!!P SCI ({DEC}|{INT})e\+{NZINT}
+!!!P KEYWORD END|END.|FUNCTION
+!!!P WS \ 

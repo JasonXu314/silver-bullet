@@ -8,7 +8,7 @@ using namespace std;
 using namespace lexer;
 using namespace parser;
 
-void deref(AST::InternalNode* pattern, const vector<AST::PatternNode*>& patterns);
+AST::Node* deref(AST::Node* node, const vector<AST::PatternNode*>& patterns);
 
 int main() {
 	TokenStream tokens(cin);
@@ -19,11 +19,13 @@ int main() {
 		patterns.push_back(parsePattern(tokens));
 	}
 
+	vector<AST::PatternNode*> derefPatterns;
+
 	for (auto pattern : patterns) {
-		deref(pattern, patterns);
+		derefPatterns.push_back(deref(pattern, patterns)->as<AST::PatternNode>());
 	}
 
-	lexer::Tables tables = lexer::generateTables(patterns);
+	lexer::Tables tables = lexer::generateTables(derefPatterns);
 
 	cout << "     State\nChar ";
 	for (size_t state = 0; state < tables.numStates; state++) {
@@ -90,27 +92,65 @@ int main() {
 
 	dump.close();
 
+	for (auto pattern : patterns) {
+		delete pattern;
+	}
+
+	for (auto pattern : derefPatterns) {
+		delete pattern;
+	}
+
 	return 0;
 }
 
-void deref(AST::InternalNode* pattern, const vector<AST::PatternNode*>& patterns) {
-	for (auto& child : pattern->children()) {
-		if (child->type == "primitive::regex") {
-			deref(child->as<AST::RegexNode>(), patterns);
-		} else if (child->type == "primitive::regex_or") {
-			deref(child->as<AST::RegexOrNode>(), patterns);
-		} else if (child->type == "primitive::regex_repeat") {
-			deref(child->as<AST::RegexRepeatNode>(), patterns);
-		} else if (child->type == "primitive::pattern_ref") {
-			string name = *child->as<AST::RegexPatternRefNode>()->name();
+AST::Node* deref(AST::Node* node, const vector<AST::PatternNode*>& patterns) {
+	if (node->type == "primitive::regex_literal") {
+		return new AST::RegexLiteralNode(node->as<AST::RegexLiteralNode>());
+	} else if (node->type == "primitive::regex_range") {
+		return new AST::RegexRangeNode(node->as<AST::RegexRangeNode>());
+	} else if (node->type == "primitive::pattern_ref") {
+		string name = *node->as<AST::RegexPatternRefNode>()->name();
+		AST::PatternNode* ref = nullptr;
 
-			for (auto pattern : patterns) {
-				if (pattern->name() == name) {
-					delete child;
-					child = pattern->children()[0];
-					break;
-				}
+		for (auto pattern : patterns) {
+			if (pattern->name() == name) {
+				ref = pattern;
+				break;
 			}
+		}
+
+		if (ref != nullptr) {
+			return deref(ref->children()[0], patterns);
+		} else {
+			return node;
+		}
+	} else {
+		if (node->type == "primitive::regex") {
+			vector<AST::Node*> children;
+
+			for (auto child : node->as<AST::RegexNode>()->children()) {
+				children.push_back(deref(child, patterns));
+			}
+
+			return new AST::RegexNode(children);
+		} else if (node->type == "primitive::regex_or") {
+			vector<AST::Node*> children;
+
+			for (auto child : node->as<AST::RegexOrNode>()->children()) {
+				children.push_back(deref(child, patterns));
+			}
+
+			return new AST::RegexOrNode(children);
+		} else if (node->type == "primitive::regex_repeat") {
+			AST::RegexRepeatNode* n = node->as<AST::RegexRepeatNode>();
+
+			return new AST::RegexRepeatNode(n->min, n->max, deref(n->children()[0], patterns));
+		} else if (node->type == "primitive::pattern") {
+			AST::PatternNode* n = node->as<AST::PatternNode>();
+
+			return new AST::PatternNode(n->name(), deref(n->children()[0], patterns)->as<AST::RegexNode>());
+		} else {
+			throw domain_error("Invalid regex node");
 		}
 	}
 }

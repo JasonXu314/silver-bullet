@@ -33,6 +33,7 @@ public:
 protected:
 	Node() = delete;
 	Node(const std::string& type) : type(type) {}
+	Node(Node* other) : type(other->type) {}
 
 	virtual std::ostream& _print(std::ostream& os, unsigned int level) const = 0;
 };
@@ -42,6 +43,7 @@ class LeafNode : public Node {
 public:
 	LeafNode(const std::string& type) : Node(type), _data(nullptr) {}
 	LeafNode(const std::string& type, DT* data) : Node(type), _data(data) {}
+	LeafNode(LeafNode* other) : Node(other), _data(new DT(*other->_data)) {}
 
 	virtual ~LeafNode() { delete _data; }
 
@@ -79,6 +81,7 @@ protected:
 class RegexLiteralNode : public LeafNode<std::string> {
 public:
 	RegexLiteralNode(std::string* raw) : LeafNode("primitive::regex_literal", raw) {}
+	RegexLiteralNode(RegexLiteralNode* other) : LeafNode<std::string>(other) {}
 
 	std::string* str() const { return _data; }
 
@@ -89,6 +92,7 @@ protected:
 class RegexRangeNode : public LeafNode<std::string> {
 public:
 	RegexRangeNode(std::string* raw) : LeafNode("primitive::regex_range", raw) {}
+	RegexRangeNode(RegexRangeNode* other) : LeafNode<std::string>(other) {}
 
 	std::string* chars() const { return _data; }
 

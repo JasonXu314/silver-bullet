@@ -62,7 +62,7 @@ AST::PatternNode* parser::parsePattern(lexer::TokenStream& tokens) {
 }
 
 AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
-	lexer::Token token = tokens.peek();
+	lexer::Token token = tokens.peek(true);
 
 	if (token.type == "raw") {
 		vector<AST::Node*> parts;
@@ -79,6 +79,45 @@ AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 					parts.push_back(parseRange(tokens));
 					token = tokens.peek(true);
 					continue;
+				}
+				case '(': {
+					if (literal != nullptr) {
+						parts.push_back(literal);
+						literal = nullptr;
+					}
+
+					tokens.read(true);
+
+					parts.push_back(parseRegex(tokens));
+
+					if (tokens.peek(true).raw[0] != ')') {
+						throw domain_error("Expected ')' after group in regex");
+					}
+
+					tokens.read(true);
+					token = tokens.peek(true);
+					continue;
+				}
+				case '|': {
+					if (literal != nullptr) {
+						parts.push_back(literal);
+						literal = nullptr;
+					}
+
+					tokens.read(true);
+					tokens.peek(true);
+					AST::RegexOrNode* orNode = new AST::RegexOrNode({new AST::RegexNode(parts)});
+
+					AST::RegexNode* right = parseRegex(tokens);
+					if (right->children()[0]->type == "primitive::regex_or") {
+						for (auto child : right->children()[0]->as<AST::RegexOrNode>()->children()) {
+							orNode->append(child);
+						}
+					} else {
+						orNode->append(right);
+					}
+
+					return new AST::RegexNode({orNode});
 				}
 				case '?': {
 					if (literal != nullptr) {
@@ -220,9 +259,20 @@ AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 							token = tokens.peek(true);
 						} while (isalnum(token.raw[0]) || token.raw[0] == '_');
 
+						if (token.raw[0] != '}') {
+							throw domain_error("Expected '}' after pattern ref name");
+						}
+
 						parts.push_back(new AST::RegexPatternRefNode(new string(name)));
 					}
 					break;
+				}
+				case ')': {
+					if (literal != nullptr) {
+						parts.push_back(literal);
+					}
+
+					return new AST::RegexNode(parts);
 				}
 				default: {
 					if (token.raw[0] == '\\') {
@@ -246,19 +296,15 @@ AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 								token.raw[0] = '\\';
 								break;
 							case ']':
-								token.raw[0] = ']';
-								break;
 							case '-':
-								token.raw[0] = '-';
-								break;
 							case '+':
-								token.raw[0] = '+';
-								break;
 							case '{':
-								token.raw[0] = '{';
-								break;
 							case '}':
-								token.raw[0] = '}';
+							case '|':
+							case '.':
+							case ' ':
+							case '(':
+							case ')':
 								break;
 						}
 					}

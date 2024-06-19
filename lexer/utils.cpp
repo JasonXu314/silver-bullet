@@ -170,6 +170,17 @@ void lexer::makeNFA(Tables& tables, parser::AST::Node* regex, size_t start, size
 		for (char c : *chars) {
 			makeTransition(tables, start, end, c);
 		}
+	} else if (regex->type == "primitive::regex_or") {
+		parser::AST::RegexOrNode* node = dynamic_cast<parser::AST::RegexOrNode*>(regex);
+
+		for (auto rule : node->children()) {
+			size_t subStart = makeState(tables), subEnd = makeState(tables);
+
+			makeNFA(tables, rule, subStart, subEnd);
+
+			makeTransition(tables, start, subStart, EOF);
+			makeTransition(tables, subEnd, end, EOF);
+		}
 	} else if (regex->type == "primitive::regex_repeat") {
 		parser::AST::RegexRepeatNode* node = dynamic_cast<parser::AST::RegexRepeatNode*>(regex);
 
