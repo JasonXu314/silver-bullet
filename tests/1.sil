@@ -5,3 +5,4 @@
 !!!P SCI ({DEC}|{INT})e\+{NZINT}
 !!!P KEYWORD END|END.|FUNCTION
 !!!P WS \ 
+!!!P TEST abc|(abc)*d
