@@ -278,74 +278,29 @@ int main() {
 	set<TrapRecord> hopeless;
 	size_t state = 1, pos = 0;
 
-	while (cin) {
-		int ic = cin.get();
+	while (true) {
+		int ic = cin.peek();
 		unsigned char c = ic;
-
-		if (ic == EOF && token.empty()) break;
 
 		size_t nextState = ::next[state * 256 + c];
 
-		if (ic == EOF || nextState == 0 || hopeless.count({nextState, pos})) {
-			if (!trail.empty()) {
-				cout << "backtracking on " << token << "$" << endl;
+		if (ic == EOF || nextState == 0 || hopeless.count({nextState, pos + 1})) {
+			if (ic == EOF) {
+				if (token.empty()) break;
+				cin.clear();
+			}
 
-				if (ic != EOF) {
-					cin.putback(c);
-					hopeless.emplace(nextState, pos);
-				} else {
-					cin.clear();
-
-					cout << "token: " << token << ", state: " << state << ", trail: " << trail.top() << ", pos: " << pos << ", accept: " << accept[state]
-						 << ", next: " << cin.peek() << endl;
-				}
-
+			while (!accept[state] && !trail.empty()) {
+				cin.putback(token.back());
+				token.pop_back();
+				hopeless.emplace(state, pos);
+				state = trail.top();
+				trail.pop();
 				pos--;
-				while (!trail.empty() && !accept[state]) {
-					cin.putback(token.back());
-					hopeless.emplace(state, pos);
+			}
 
-					state = trail.top();
-					trail.pop();
-					token.pop_back();
-					pos--;
-					cout << "token: " << token << ", state: " << state << ", trail: " << trail.top() << ", pos: " << pos << ", accept: " << accept[state]
-						 << ", next: " << cin.peek() << endl;
-				}
-
-				if (accept[state]) {
-					cout << "accept: " << fix(token) << "$ => " << ruleNames[accept[state]] << endl;
-					state = 1;
-					pos = 0;
-
-					set<TrapRecord> newHopeless;
-					for (auto record : hopeless) {
-						if (record.pos >= token.length()) {
-							newHopeless.emplace(record.state, record.pos - token.length());
-						}
-					}
-					hopeless = newHopeless;
-
-					token.clear();
-					while (!trail.empty()) trail.pop();
-				} else {
-					cout << "reject: " << fix(token) << "$" << endl;
-					state = 1;
-					pos = 0;
-
-					set<TrapRecord> newHopeless;
-					for (auto record : hopeless) {
-						if (record.pos >= token.length()) {
-							newHopeless.emplace(record.state, record.pos - token.length());
-						}
-					}
-					hopeless = newHopeless;
-
-					token.clear();
-				}
-			} else {
-				if (ic != EOF) token.push_back(c);
-				cout << "reject: " << fix(token) << "$" << endl;
+			if (accept[state]) {
+				cout << "accept: " << fix(token) << "$ => " << ruleNames[accept[state]] << endl;
 				state = 1;
 				pos = 0;
 
@@ -359,12 +314,27 @@ int main() {
 
 				token.clear();
 				while (!trail.empty()) trail.pop();
+			} else {
+				cout << "reject: " << fix(token) << "$" << endl;
+				state = 1;
+				pos = 0;
+
+				set<TrapRecord> newHopeless;
+				for (auto record : hopeless) {
+					if (record.pos >= token.length()) {
+						newHopeless.emplace(record.state, record.pos - token.length());
+					}
+				}
+				hopeless = newHopeless;
+
+				token.clear();
 			}
 		} else {
 			token.push_back(c);
 			trail.push(state);
 			state = nextState;
 			pos++;
+			cin.get();
 		}
 	}
 
