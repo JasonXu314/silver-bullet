@@ -100,6 +100,8 @@ int main() {
 		delete pattern;
 	}
 
+	freeTables(tables);
+
 	return 0;
 }
 

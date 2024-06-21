@@ -113,6 +113,9 @@ AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 						for (auto child : right->children()[0]->as<AST::RegexOrNode>()->children()) {
 							orNode->append(child);
 						}
+
+						right->children()[0]->as<AST::RegexNode>()->children().clear();
+						delete right;
 					} else {
 						orNode->append(right);
 					}
