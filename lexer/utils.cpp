@@ -24,7 +24,7 @@ lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rul
 
 	for (size_t i = 0; i < rules.size(); i++) {
 		auto regex = rules[i];
-		cout << "Generating rule " << regex->name() << endl;
+		// cout << "Generating rule " << regex->name() << endl;
 
 		size_t start = makeState(nfa), end = makeState(nfa);
 		makeAccept(nfa, end, i + 1);
@@ -44,15 +44,15 @@ lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rul
 	bzero(dfa.next, dfa.maxStates * 256 * sizeof(size_t));
 	bzero(dfa.accept, dfa.maxStates * sizeof(size_t));
 
-	for (size_t state = 0; state < nfa.numStates; state++) {
-		cout << "state " << state << " epsilon-closure: ";
+	// for (size_t state = 0; state < nfa.numStates; state++) {
+	// cout << "state " << state << " epsilon-closure: ";
 
-		for (size_t s : findEpsClosure(nfa, state)) {
-			cout << s << " ";
-		}
+	// for (size_t s : findEpsClosure(nfa, state)) {
+	// 	cout << s << " ";
+	// }
 
-		cout << endl;
-	}
+	// cout << endl;
+	// }
 
 	size_t mapCap = dfa.maxStates;
 	set<size_t>* closureMap = new set<size_t>[mapCap];

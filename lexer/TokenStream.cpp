@@ -6,47 +6,72 @@ using namespace std;
 unsigned int lexer::line = 1;
 unsigned int lexer::col = 1;
 
-TokenStream::TokenStream(istream& in) : _dirty(false), _stream(in) {
-	// _tokens.emplace("primitive::pattern", Pattern::bbb('P'));
-	// _tokens.emplace("primitive::token", Pattern::bbb('T'));
-
+TokenStream::TokenStream(istream& in, const Tables& initialTables) : _dirty(false), _live(in.good()), _stream(in), _tables(initialTables) {
 	_tokenOrder.push_back("primitive::pattern");
-	_tokenOrder.push_back("primitive::token");
+	_tokenOrder.push_back("primitive::ws");
+	_tokenOrder.push_back("raw");
 }
 
 TokenStream& TokenStream::operator>>(Token& tok) {
-	if (_dirty) {
-		tok = _currTok;
-		_dirty = false;
-	} else {
-		_read();
+	if (_live) {
+		if (_dirty) {
+			tok = _currTok;
+			_dirty = false;
+		} else {
+			_read();
 
-		tok = _currTok;
-		_dirty = false;
+			tok = _currTok;
+			_dirty = false;
+		}
+	} else {
+		if (_dirty) {
+			tok = _currTok;
+			_dirty = false;
+		} else {
+			tok.raw = "";
+			tok.type = "error";
+		}
 	}
 
 	return *this;
 }
 
 Token TokenStream::peek(bool raw) {
-	if (_dirty) {
-		return _currTok;
-	} else {
-		_read(raw);
+	if (_live) {
+		if (_dirty) {
+			return _currTok;
+		} else {
+			_read(raw);
 
-		return _currTok;
+			return _currTok;
+		}
+	} else {
+		if (_dirty) {
+			return _currTok;
+		} else {
+			return Token{"error", ""};
+		}
 	}
 }
 
 Token TokenStream::read(bool raw) {
-	if (_dirty) {
-		_dirty = false;
-		return _currTok;
-	} else {
-		_read(raw);
-		_dirty = false;
+	if (_live) {
+		if (_dirty) {
+			_dirty = false;
+			return _currTok;
+		} else {
+			_read(raw);
+			_dirty = false;
 
-		return _currTok;
+			return _currTok;
+		}
+	} else {
+		if (_dirty) {
+			_dirty = false;
+			return _currTok;
+		} else {
+			return Token{"error", ""};
+		}
 	}
 }
 
@@ -67,27 +92,69 @@ void TokenStream::_read(bool raw) {
 
 		_dirty = true;
 	} else {
-		while (!_stream.fail()) {
-			char c = _stream.peek();
+		stack<size_t> trail;
+		size_t state = 1, pos = 0;
 
-			_currTok.raw += c;
-			_stream.get();
+		while (true) {
+			int ic = cin.peek();
+			unsigned char c = ic;
 
-			if (_currTok.raw == "!!!P") {
-				_currTok.type = "primitive::pattern";
-				break;
-			}
+			size_t nextState = _tables.next[state * 256 + c];
 
-			if (c == '\n') {
-				line++;
-				col = 0;
+			if (ic == EOF || nextState == 0 || _hopeless.count({nextState, pos + 1})) {
+				if (ic == EOF) {
+					if (_currTok.raw.empty()) {
+						_live = false;
+						break;
+					}
+					cin.clear();
+				}
+
+				while (!_tables.accept[state] && !trail.empty()) {
+					cin.putback(_currTok.raw.back());
+					_currTok.raw.pop_back();
+					_hopeless.emplace(state, pos);
+					state = trail.top();
+					trail.pop();
+					pos--;
+				}
+
+				if (_tables.accept[state]) {
+					_currTok.type = _tokenOrder[_tables.accept[state] - 1];
+					state = 1;
+					pos = 0;
+
+					set<TrapRecord> newHopeless;
+					for (auto record : _hopeless) {
+						if (record.pos >= _currTok.raw.length()) {
+							newHopeless.emplace(record.state, record.pos - _currTok.raw.length());
+						}
+					}
+					_hopeless = newHopeless;
+
+					break;
+				} else {
+					_currTok.type = "raw";
+					state = 1;
+					pos = 0;
+
+					set<TrapRecord> newHopeless;
+					for (auto record : _hopeless) {
+						if (record.pos >= _currTok.raw.length()) {
+							newHopeless.emplace(record.state, record.pos - _currTok.raw.length());
+						}
+					}
+					_hopeless = newHopeless;
+
+					break;
+				}
 			} else {
-				col++;
+				_currTok.raw.push_back(c);
+				trail.push(state);
+				state = nextState;
+				pos++;
+				cin.get();
 			}
-		}
-
-		if (_currTok.type == "") {
-			_currTok.type = "raw";
 		}
 
 		_dirty = true;
@@ -95,5 +162,9 @@ void TokenStream::_read(bool raw) {
 }
 
 TokenStream::operator bool() const {
-	return !_stream.fail() && _stream.peek() != EOF;
+	return _live;
+}
+
+bool lexer::operator<(const TrapRecord a, const TrapRecord b) {
+	return a.state < b.state || a.pos < b.pos;
 }
