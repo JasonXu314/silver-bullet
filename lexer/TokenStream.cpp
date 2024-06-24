@@ -6,12 +6,6 @@ using namespace std;
 unsigned int lexer::line = 1;
 unsigned int lexer::col = 1;
 
-TokenStream::TokenStream(istream& in, const Tables& initialTables) : _dirty(false), _live(in.good()), _stream(in), _tables(initialTables) {
-	_tokenOrder.push_back("primitive::pattern");
-	_tokenOrder.push_back("primitive::ws");
-	_tokenOrder.push_back("raw");
-}
-
 TokenStream& TokenStream::operator>>(Token& tok) {
 	if (_live) {
 		if (_dirty) {
@@ -75,6 +69,10 @@ Token TokenStream::read(bool raw) {
 	}
 }
 
+TokenStream::~TokenStream() {
+	freeTables(_tables);
+}
+
 void TokenStream::_read(bool raw) {
 	_currTok = Token{"", ""};
 
@@ -110,7 +108,9 @@ void TokenStream::_read(bool raw) {
 					cin.clear();
 				}
 
+				bool putback = false;
 				while (!_tables.accept[state] && !trail.empty()) {
+					putback = true;
 					cin.putback(_currTok.raw.back());
 					_currTok.raw.pop_back();
 					_hopeless.emplace(state, pos);
@@ -118,6 +118,8 @@ void TokenStream::_read(bool raw) {
 					trail.pop();
 					pos--;
 				}
+
+				if (!putback && ic == EOF) _live = false;
 
 				if (_tables.accept[state]) {
 					_currTok.type = _tokenOrder[_tables.accept[state] - 1];
@@ -163,6 +165,12 @@ void TokenStream::_read(bool raw) {
 
 TokenStream::operator bool() const {
 	return _live;
+}
+
+void TokenStream::updateTables(const Tables& tables, const vector<string>& names) {
+	freeTables(_tables);
+	_tables = tables;
+	_tokenOrder = names;
 }
 
 bool lexer::operator<(const TrapRecord a, const TrapRecord b) {

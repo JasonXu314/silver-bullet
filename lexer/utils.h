@@ -9,7 +9,7 @@
 namespace parser {
 namespace AST {
 class Node;
-class PatternNode;
+class TokenNode;
 }  // namespace AST
 }  // namespace parser
 
@@ -28,7 +28,7 @@ struct Tables {
 	std::size_t numStates, maxStates;
 };
 
-Tables generateTables(const std::vector<parser::AST::PatternNode*>& rules);
+Tables generateTables(const std::vector<parser::AST::TokenNode*>& rules);
 
 std::size_t makeState(Tables& tables);
 
@@ -46,7 +46,7 @@ void expand(std::set<std::size_t>*& map, std::size_t& size, std::size_t target);
 
 void freeTables(const Tables& tables);
 
-Tables initPrimitives();
+std::vector<parser::AST::TokenNode*> initPrimitives();
 }  // namespace lexer
 
 #endif

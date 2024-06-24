@@ -2,7 +2,14 @@
 !!!P INT {DIGIT}+
 !!!P NZINT {DIGIT}*[1-9]{DIGIT}*
 !!!P DEC {INT}.{INT}
-!!!P SCI ({DEC}|{INT})e\+{NZINT}
-!!!P KEYWORD END|END.|FUNCTION
-!!!P WS \ 
 !!!P TEST abc|(abc)*d
+!!!P ALPHA [a-zA-Z]
+!!!P ALNUM [a-zA-Z0-9]
+
+!!!T KEYWORD END|END.|FUNCTION
+!!!T IDENT {ALPHA}(_|{ALNUM})*
+!!!T INT {INT}
+!!!T DEC {DEC}
+!!!T SCI ({DEC}|{INT})e\+{NZINT}
+
+FUNCTION ABC 123 6.72 9.9981e+9

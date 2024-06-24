@@ -10,6 +10,8 @@
 namespace parser {
 AST::PatternNode* parsePattern(lexer::TokenStream& tokens);
 
+AST::TokenNode* parseToken(lexer::TokenStream& tokens);
+
 AST::RegexNode* parseRegex(lexer::TokenStream& tokens);
 
 AST::RegexRangeNode* parseRange(lexer::TokenStream& tokens);

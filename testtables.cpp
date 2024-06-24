@@ -11,7 +11,7 @@ using namespace parser;
 AST::Node* deref(AST::Node* node, const vector<AST::PatternNode*>& patterns);
 
 int main() {
-	TokenStream tokens(cin);
+	TokenStream tokens(cin, generateTables(initPrimitives()));
 
 	vector<AST::PatternNode*> patterns;
 

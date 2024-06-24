@@ -27,7 +27,8 @@ bool operator<(const lexer::TrapRecord a, const lexer::TrapRecord b);
 
 class TokenStream {
 public:
-	TokenStream(std::istream& in, const Tables& initialTables = initPrimitives());
+	TokenStream(std::istream& in, const Tables& initialTables, const std::vector<std::string>& initialNames)
+		: _dirty(false), _live(in.good()), _stream(in), _tokenOrder(initialNames), _tables(initialTables) {}
 
 	TokenStream& operator>>(Token& tok);
 
@@ -37,12 +38,15 @@ public:
 
 	operator bool() const;
 
+	void updateTables(const Tables& tables, const std::vector<std::string>& names);
+
+	~TokenStream();
+
 private:
 	bool _dirty;
 	bool _live;
 	std::istream& _stream;
 	Token _currTok;
-	std::vector<std::string> _patternOrder;
 	std::vector<std::string> _tokenOrder;
 	Tables _tables;
 	std::set<TrapRecord> _hopeless;

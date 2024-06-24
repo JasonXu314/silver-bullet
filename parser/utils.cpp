@@ -61,6 +61,64 @@ AST::PatternNode* parser::parsePattern(lexer::TokenStream& tokens) {
 	}
 }
 
+AST::TokenNode* parser::parseToken(lexer::TokenStream& tokens) {
+	lexer::Token token = tokens.peek();
+
+	if (token.type == "primitive::token") {
+		tokens.read();
+
+		token = tokens.peek(true);
+		if (isspace(token.raw[0]) && token.raw[0] != '\n') {
+			do {
+				tokens.read(true);
+				token = tokens.peek(true);
+			} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+
+			if (isalpha(token.raw[0]) || token.raw[0] == '_') {
+				string name;
+
+				do {
+					tokens.read(true);
+					name += token.raw[0];
+					token = tokens.peek(true);
+				} while (isalnum(token.raw[0]) || token.raw[0] == '_');
+
+				if (isspace(token.raw[0]) && token.raw[0] != '\n') {
+					do {
+						tokens.read(true);
+						token = tokens.peek(true);
+					} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+
+					AST::RegexNode* regex = parseRegex(tokens);
+
+					token = tokens.peek(true);
+					while (isspace(token.raw[0]) && token.raw[0] != '\n') {
+						tokens.read(true);
+						token = tokens.peek(true);
+					}
+
+					if (token.raw[0] == '\n') {
+						tokens.read(true);
+
+						return new AST::TokenNode(name, regex);
+					} else {
+						throw domain_error("Expected newline at end of pattern declaration, got '" + token.raw + "' (ln: " + to_string(lexer::line) +
+										   ", col: " + to_string(lexer::col) + ")");
+					}
+				} else {
+					throw domain_error("Expected whitespace");
+				}
+			} else {
+				throw domain_error("Expected token name");
+			}
+		} else {
+			throw domain_error("Expected whitespace");
+		}
+	} else {
+		throw domain_error("Expected '!!!T', got '" + token.raw + "'");
+	}
+}
+
 AST::RegexNode* parser::parseRegex(lexer::TokenStream& tokens) {
 	lexer::Token token = tokens.peek(true);
 

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-lexer::Tables lexer::generateTables(const vector<parser::AST::PatternNode*>& rules) {
+lexer::Tables lexer::generateTables(const vector<parser::AST::TokenNode*>& rules) {
 	Tables dfa, nfa;
 
 	nfa.numStates = 0;
@@ -319,12 +319,13 @@ void lexer::freeTables(const Tables& tables) {
 	delete[] tables.accept;
 }
 
-lexer::Tables lexer::initPrimitives() {
+vector<parser::AST::TokenNode*> lexer::initPrimitives() {
 	using namespace parser;
 
-	vector<AST::PatternNode*> rules;
+	vector<AST::TokenNode*> rules;
 
-	rules.push_back(new AST::PatternNode("primitive::pattern", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!P"))})));
+	rules.push_back(new AST::TokenNode("primitive::pattern", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!P"))})));
+	rules.push_back(new AST::TokenNode("primitive::token", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!T"))})));
 	string *every = new string(), *space = new string();
 	// again, ignore eof
 	for (unsigned char c = 0; c < 255; c++) {
@@ -333,14 +334,8 @@ lexer::Tables lexer::initPrimitives() {
 			space->push_back(c);
 		}
 	}
-	rules.push_back(new AST::PatternNode("primitive::ws", new AST::RegexNode({new AST::RegexRangeNode(space)})));
-	rules.push_back(new AST::PatternNode("raw", new AST::RegexNode({new AST::RegexRangeNode(every)})));
+	rules.push_back(new AST::TokenNode("primitive::ws", new AST::RegexNode({new AST::RegexRangeNode(space)})));
+	rules.push_back(new AST::TokenNode("raw", new AST::RegexNode({new AST::RegexRangeNode(every)})));
 
-	Tables tables = generateTables(rules);
-
-	for (auto rule : rules) {
-		delete rule;
-	}
-
-	return tables;
+	return rules;
 }

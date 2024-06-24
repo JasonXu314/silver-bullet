@@ -133,6 +133,16 @@ public:
 private:
 	std::string _name;
 };
+
+class TokenNode : public InternalNode {
+public:
+	TokenNode(const std::string& name, RegexNode* pattern) : InternalNode("primitive::token", {pattern}), _name(name) {}
+
+	std::string name() const { return _name; }
+
+private:
+	std::string _name;
+};
 }  // namespace AST
 }  // namespace parser
 
