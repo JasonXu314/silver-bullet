@@ -33,8 +33,8 @@ int main() {
 		if (tokens.peek().type == "primitive::token") {
 			AST::TokenNode* tokNode = parseToken(tokens);
 
-			rules.push_back(tokNode);
-			names.push_back(tokNode->name());
+			rules.insert(rules.end() - 1, tokNode);
+			names.insert(names.end() - 1, tokNode->name());
 
 			tokens.updateTables(makeTables(rules, patterns), names);
 		} else if (tokens.peek().type == "primitive::pattern") {
@@ -44,7 +44,7 @@ int main() {
 		} else {
 			Token tok = tokens.peek();
 
-			cout << tok.type << ": " << fix(tok.raw) << "$" << endl;
+			if (tok.type != "primitive::ws") cout << tok.type << ": " << fix(tok.raw) << "$" << endl;
 			tokens.read();
 		}
 	}

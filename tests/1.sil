@@ -1,15 +1,33 @@
 !!!P DIGIT [0-9]
-!!!P INT {DIGIT}+
-!!!P NZINT {DIGIT}*[1-9]{DIGIT}*
-!!!P DEC {INT}.{INT}
+!!!P INT [+\-]?{DIGIT}+
+!!!P NZINT [+\-]?{DIGIT}*[1-9]{DIGIT}*
+!!!P DEC {INT}.[0-9]+
 !!!P TEST abc|(abc)*d
 !!!P ALPHA [a-zA-Z]
 !!!P ALNUM [a-zA-Z0-9]
 
-!!!T KEYWORD END|END.|FUNCTION
+!!!T KEYWORD IF|THEN|ELSE|WHILE|DO|END|END.|WRITE|FUNCTION|RETURN
+!!!T LPAREN \(
+!!!T RPAREN \)
+!!!T SC ;
+!!!T COMMA ,
+!!!T ASSIGN :=
+!!!T GT >
 !!!T IDENT {ALPHA}(_|{ALNUM})*
 !!!T INT {INT}
 !!!T DEC {DEC}
 !!!T SCI ({DEC}|{INT})e\+{NZINT}
 
-FUNCTION ABC 123 6.72 9.9981e+9
+FUNCTION max(a, b, c)
+	beeg := a
+
+	IF b > beeg THEN
+		beeg := b
+	END
+
+	IF c > beeg THEN
+		beeg := c
+	END
+
+	RETURN beeg
+END.
