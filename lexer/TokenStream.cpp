@@ -33,6 +33,15 @@ TokenStream& TokenStream::operator>>(Token& tok) {
 Token TokenStream::peek(bool raw) {
 	if (_live) {
 		if (_dirty) {
+			// token breaking
+			if (raw && _currTok.type != "raw") {
+				for (auto it = _currTok.raw.rbegin(); it != _currTok.raw.rend(); it++) {
+					_stream.putback(*it);
+				}
+
+				_read(true);
+			}
+
 			return _currTok;
 		} else {
 			_read(raw);
@@ -41,6 +50,16 @@ Token TokenStream::peek(bool raw) {
 		}
 	} else {
 		if (_dirty) {
+			// token breaking
+			if (raw && _currTok.type != "raw") {
+				for (auto it = _currTok.raw.rbegin(); it != _currTok.raw.rend(); it++) {
+					_stream.putback(*it);
+				}
+
+				_live = true;
+				_read(true);
+			}
+
 			return _currTok;
 		} else {
 			return Token{"error", ""};
@@ -67,6 +86,17 @@ Token TokenStream::read(bool raw) {
 			return Token{"error", ""};
 		}
 	}
+}
+
+void TokenStream::putback(const Token& tok) {
+	if (_dirty) {
+		for (auto it = _currTok.raw.rbegin(); it != _currTok.raw.rend(); it++) {
+			_stream.putback(*it);
+		}
+	}
+
+	_currTok = tok;
+	_dirty = true;
 }
 
 TokenStream::~TokenStream() {
@@ -164,7 +194,7 @@ void TokenStream::_read(bool raw) {
 }
 
 TokenStream::operator bool() const {
-	return _live;
+	return _live || _dirty;
 }
 
 void TokenStream::updateTables(const Tables& tables, const vector<string>& names) {

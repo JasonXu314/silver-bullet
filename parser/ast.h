@@ -143,6 +143,55 @@ public:
 private:
 	std::string _name;
 };
+
+class BodyNode : public InternalNode {
+public:
+	BodyNode(const std::vector<Node*>& children) : InternalNode("primitive::body", children) {}
+};
+
+class RuleLiteralNode : public LeafNode<std::string> {
+public:
+	RuleLiteralNode(std::string* raw) : LeafNode("primitive::rule_literal", raw) {}
+	RuleLiteralNode(RuleLiteralNode* other) : LeafNode<std::string>(other) {}
+
+	std::string* str() const { return _data; }
+};
+
+class RuleTokenRefNode : public LeafNode<std::string> {
+public:
+	RuleTokenRefNode(std::string* name) : LeafNode("primitive::rule_token_ref", name) {}
+	RuleTokenRefNode(RuleTokenRefNode* other) : LeafNode<std::string>(other) {}
+
+	std::string* name() const { return _data; }
+};
+
+class RuleRuleRefNode : public LeafNode<std::string> {
+public:
+	RuleRuleRefNode(std::string* name) : LeafNode("primitive::rule_rule_ref", name) {}
+	RuleRuleRefNode(RuleRuleRefNode* other) : LeafNode<std::string>(other) {}
+
+	std::string* name() const { return _data; }
+};
+
+class RuleRepeatNode : public InternalNode {
+public:
+	RuleRepeatNode(BodyNode* body) : InternalNode("primitive::rule_repeat", {body}) {}
+};
+
+class RuleOptionalNode : public InternalNode {
+public:
+	RuleOptionalNode(BodyNode* body) : InternalNode("primitive::rule_optional", {body}) {}
+};
+
+class RuleNode : public InternalNode {
+public:
+	RuleNode(const std::string& name, const std::vector<Node*>& bodies) : InternalNode("primitive::rule", bodies), _name(name) {}
+
+	std::string name() const { return _name; }
+
+private:
+	std::string _name;
+};
 }  // namespace AST
 }  // namespace parser
 

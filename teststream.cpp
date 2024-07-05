@@ -18,12 +18,16 @@ AST::Node* deref(AST::Node* node, const vector<AST::PatternNode*>& patterns);
 Tables makeTables(vector<AST::TokenNode*> rules, const vector<AST::PatternNode*>& patterns);
 
 int main() {
-	vector<AST::TokenNode*> rules = initPrimitives();
+	vector<AST::TokenNode*> rules = lexer::initPrimitives();
 	vector<AST::PatternNode*> patterns;
+
+	map<string, AST::RuleNode*> productions;
+	map<string, set<string>> FIRSTs;
 
 	vector<string> names;
 	names.push_back("primitive::pattern");
 	names.push_back("primitive::token");
+	names.push_back("primitive::rule");
 	names.push_back("primitive::ws");
 	names.push_back("raw");
 
@@ -31,21 +35,42 @@ int main() {
 
 	while (tokens) {
 		if (tokens.peek().type == "primitive::token") {
-			AST::TokenNode* tokNode = parseToken(tokens);
+			AST::TokenNode* tokNode = parseTokenDecl(tokens);
 
 			rules.insert(rules.end() - 1, tokNode);
 			names.insert(names.end() - 1, tokNode->name());
 
 			tokens.updateTables(makeTables(rules, patterns), names);
 		} else if (tokens.peek().type == "primitive::pattern") {
-			AST::PatternNode* patNode = parsePattern(tokens);
+			AST::PatternNode* patNode = parsePatternDecl(tokens);
 
 			patterns.push_back(patNode);
+		} else if (tokens.peek().type == "primitive::rule") {
+			AST::RuleNode* ruleNode = parseRuleDecl(tokens);
+
+			productions.emplace(ruleNode->name(), ruleNode);
+			FIRSTs.emplace(ruleNode->name(), utils::findFIRSTSet(ruleNode, productions));
 		} else {
 			Token tok = tokens.peek();
 
-			if (tok.type != "primitive::ws") cout << tok.type << ": " << fix(tok.raw) << "$" << endl;
-			tokens.read();
+			AST::RuleNode* match = nullptr;
+
+			for (auto [name, FIRST] : FIRSTs) {
+				if (tok.type == "raw" ? FIRST.count(tok.raw) : FIRST.count("token::" + tok.type)) {
+					match = productions.at(name);
+					break;
+				}
+			}
+
+			if (match != nullptr) {
+				AST::Node* node = parse(tokens, match, productions);
+
+				cout << node << endl;
+				delete node;
+			} else {
+				if (tok.type != "primitive::ws") cout << tok.type << ": " << fix(tok.raw) << "$" << endl;
+				tokens.read();
+			}
 		}
 	}
 

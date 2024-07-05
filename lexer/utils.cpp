@@ -326,6 +326,7 @@ vector<parser::AST::TokenNode*> lexer::initPrimitives() {
 
 	rules.push_back(new AST::TokenNode("primitive::pattern", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!P"))})));
 	rules.push_back(new AST::TokenNode("primitive::token", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!T"))})));
+	rules.push_back(new AST::TokenNode("primitive::rule", new AST::RegexNode({new AST::RegexLiteralNode(new string("!!!R"))})));
 	string *every = new string(), *space = new string();
 	// again, ignore eof
 	for (unsigned char c = 0; c < 255; c++) {

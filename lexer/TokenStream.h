@@ -36,6 +36,8 @@ public:
 
 	Token read(bool raw = false);
 
+	void putback(const Token& tok);
+
 	operator bool() const;
 
 	void updateTables(const Tables& tables, const std::vector<std::string>& names);

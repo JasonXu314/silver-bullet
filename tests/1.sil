@@ -6,7 +6,8 @@
 !!!P ALPHA [a-zA-Z]
 !!!P ALNUM [a-zA-Z0-9]
 
-!!!T KEYWORD IF|THEN|ELSE|WHILE|DO|END|END.|WRITE|FUNCTION|RETURN
+!!!T KEYWORD IF|THEN|ELSE|WHILE|DO|END|END.|WRITE|RETURN
+!!!T FN FUNCTION
 !!!T LPAREN \(
 !!!T RPAREN \)
 !!!T SC ;
@@ -17,6 +18,8 @@
 !!!T INT {INT}
 !!!T DEC {DEC}
 !!!T SCI ({DEC}|{INT})e\+{NZINT}
+
+!!!R FUNCTION => token::FN {token::primitive::ws} token::IDENT token::LPAREN [token::IDENT {token::COMMA {token::primitive::ws} token::IDENT}] token::RPAREN;
 
 FUNCTION max(a, b, c)
 	beeg := a

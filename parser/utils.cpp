@@ -3,7 +3,7 @@
 using namespace parser;
 using namespace std;
 
-AST::PatternNode* parser::parsePattern(lexer::TokenStream& tokens) {
+AST::PatternNode* parser::parsePatternDecl(lexer::TokenStream& tokens) {
 	lexer::Token token = tokens.peek();
 
 	if (token.type == "primitive::pattern") {
@@ -61,7 +61,7 @@ AST::PatternNode* parser::parsePattern(lexer::TokenStream& tokens) {
 	}
 }
 
-AST::TokenNode* parser::parseToken(lexer::TokenStream& tokens) {
+AST::TokenNode* parser::parseTokenDecl(lexer::TokenStream& tokens) {
 	lexer::Token token = tokens.peek();
 
 	if (token.type == "primitive::token") {
@@ -479,6 +479,358 @@ AST::RegexRangeNode* parser::parseRange(lexer::TokenStream& tokens) {
 		}
 	} else {
 		throw domain_error("Expected raw token in regex range");
+	}
+}
+
+AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
+	lexer::Token token = tokens.peek();
+
+	if (token.type != "primitive::rule") throw domain_error("Expected '!!!R', got '" + token.raw + "'");
+
+	tokens.read();
+
+	token = tokens.peek(true);
+	if (!(isspace(token.raw[0]) && token.raw[0] != '\n')) throw domain_error("Expected whitespace");
+
+	do {
+		tokens.read(true);
+		token = tokens.peek(true);
+	} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+
+	if (!(isalpha(token.raw[0]) || token.raw[0] == '_')) throw domain_error("Expected pattern name");
+
+	string name;
+
+	do {
+		tokens.read(true);
+		name += token.raw[0];
+		token = tokens.peek(true);
+	} while (isalnum(token.raw[0]) || token.raw[0] == '_');
+
+	if (!(isspace(token.raw[0]) && token.raw[0] != '\n')) throw domain_error("Expected whitespace");
+
+	do {
+		tokens.read(true);
+		token = tokens.peek(true);
+	} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+
+	if (token.raw[0] != '=') throw domain_error("Expected '=>'");
+
+	tokens.read(true);
+	token = tokens.peek(true);
+
+	if (token.raw[0] != '>') throw domain_error("Expected '=>'");
+
+	tokens.read(true);
+	token = tokens.peek(true);
+
+	if (!(isspace(token.raw[0]) && token.raw[0] != '\n')) throw domain_error("Expected whitespace");
+
+	do {
+		tokens.read(true);
+		token = tokens.peek(true);
+	} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+
+	vector<AST::Node*> bodies;
+
+	do {
+		AST::BodyNode* body = parseRuleBody(tokens);
+		bodies.push_back(body);
+
+		token = tokens.peek(true);
+		// no need to remove whitespace because parseRuleBody consumes until either '|' or ';'
+	} while (token.raw[0] != ';');
+
+	tokens.read(true);
+	token = tokens.peek(true);
+	while (isspace(token.raw[0]) && token.raw[0] != '\n') {
+		tokens.read(true);
+		token = tokens.peek(true);
+	}
+
+	if (token.raw[0] == '\n') {
+		tokens.read(true);
+
+		return new AST::RuleNode(name, bodies);
+	} else {
+		throw domain_error("Expected newline at end of rule declaration, got '" + token.raw + "' (ln: " + to_string(lexer::line) +
+						   ", col: " + to_string(lexer::col) + ")");
+	}
+}
+
+AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end) {
+	lexer::Token token = tokens.peek(true);
+
+	vector<AST::Node*> parts;
+
+	do {
+		if (token.raw[0] == '\'') {
+			string literal;
+
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			while (token.raw[0] != '\'') {
+				if (token.raw[0] == '\\') {
+					tokens.read(true);
+					token = tokens.peek(true);
+
+					switch (token.raw[0]) {
+						case 'n':
+							literal += '\n';
+							break;
+						case 'r':
+							literal += '\r';
+							break;
+						case '0':
+							literal += '\0';
+							break;
+						case 't':
+							literal += '\t';
+							break;
+						case '\\':
+							literal += '\\';
+							break;
+						case '\'':
+							literal += '\'';
+							break;
+					}
+				} else {
+					literal += token.raw[0];
+				}
+
+				tokens.read(true);
+				token = tokens.peek(true);
+			}
+
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			parts.push_back(new AST::RuleLiteralNode(new string(literal)));
+		} else if (token.raw[0] == 't') {
+			string rest = "oken::";
+
+			for (size_t i = 0; i < rest.size(); i++) {
+				tokens.read(true);
+				token = tokens.peek(true);
+
+				if (token.raw[0] != rest[i]) {
+					throw domain_error(string("Expected '") + rest[i] + "', part of `token::` for token reference, got '" + token.raw + "'");
+				}
+			}
+
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			string* refName = new string();
+			while (isalpha(token.raw[0]) || token.raw[0] == ':' || token.raw[0] == '_') {
+				refName->push_back(token.raw[0]);
+
+				tokens.read(true);
+				token = tokens.peek(true);
+			}
+
+			parts.push_back(new AST::RuleTokenRefNode(refName));
+		} else if (token.raw[0] == 'r') {
+			string rest = "ule::";
+
+			for (size_t i = 0; i < rest.size(); i++) {
+				tokens.read(true);
+				token = tokens.peek(true);
+
+				if (token.raw[0] != rest[i]) {
+					throw domain_error("Expected `rule::` for rule reference");
+				}
+			}
+
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			string* refName = new string();
+			while (isalpha(token.raw[0]) || token.raw[0] == ':' || token.raw[0] == '_') {
+				refName->push_back(token.raw[0]);
+
+				tokens.read(true);
+				token = tokens.peek(true);
+			}
+
+			parts.push_back(new AST::RuleRuleRefNode(refName));
+		} else if (token.raw[0] == '{') {
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			while (isspace(token.raw[0]) && token.raw[0] != '\n') {
+				tokens.read(true);
+				token = tokens.peek(true);
+			}
+
+			AST::BodyNode* body = parseRuleBody(tokens, '}');
+
+			parts.push_back(new AST::RuleRepeatNode(body));
+			token = tokens.peek(true);
+
+			if (token.raw[0] == '}') {
+				tokens.read(true);
+				token = tokens.peek(true);
+			} else {
+				throw domain_error("Expected '}' after rule repeat");
+			}
+		} else if (token.raw[0] == '[') {
+			tokens.read(true);
+			token = tokens.peek(true);
+
+			while (isspace(token.raw[0]) && token.raw[0] != '\n') {
+				tokens.read(true);
+				token = tokens.peek(true);
+			}
+
+			AST::BodyNode* body = parseRuleBody(tokens, ']');
+
+			parts.push_back(new AST::RuleOptionalNode(body));
+			token = tokens.peek(true);
+
+			if (token.raw[0] == ']') {
+				tokens.read(true);
+				token = tokens.peek(true);
+			} else {
+				throw domain_error("Expected ']' after rule optional");
+			}
+		} else if (end != '\0' && token.raw[0] != end) {
+			if (end != '\0') {
+				throw domain_error("Expected end of repetition/optional with '" + string(1, end) + "', got '" + token.raw + "'");
+			} else {
+				throw domain_error("Expected rule literal or token/rule reference or repetition or optional, got '" + token.raw + "'");
+			}
+		}
+
+		while (isspace(token.raw[0])) {
+			tokens.read(true);
+			token = tokens.peek(true);
+		}
+	} while (token.raw[0] != '|' && token.raw[0] != ';' && (end == '\0' || token.raw[0] != end));
+
+	return new AST::BodyNode(parts);
+}
+
+AST::InternalNode* parser::parse(lexer::TokenStream& tokens, AST::RuleNode* rule, const map<string, AST::RuleNode*>& rules) {
+	for (auto child : rule->children()) {
+		try {
+			return parse(tokens, rule->name(), child->as<AST::BodyNode>(), rules);
+		} catch (exception& e) {
+			cout << "Got error: " << e.what() << endl;
+		}
+	}
+
+	throw domain_error("Expected production `" + rule->name() + "`");
+}
+
+AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name, AST::BodyNode* body, const map<string, AST::RuleNode*>& rules) {
+	lexer::Token token;
+	stack<lexer::Token> consumed;
+
+	vector<AST::Node*> children;
+
+	for (auto part : body->children()) {
+		if (part->type == "primitive::rule_literal") {
+			AST::RuleLiteralNode* literal = part->as<AST::RuleLiteralNode>();
+
+			for (char c : *literal->str()) {
+				token = tokens.read(true);
+
+				if (c != token.raw[0]) {
+					throw domain_error("Expected literal `" + *literal->str() + "`");
+				}
+			}
+
+			children.push_back(new AST::LeafNode<string>("primitive::literal", new string(*literal->str())));
+		} else if (part->type == "primitive::rule_token_ref") {
+			AST::RuleTokenRefNode* ref = part->as<AST::RuleTokenRefNode>();
+
+			token = tokens.read();
+
+			if (token.type != *ref->name()) {
+				// TODO: putback consumed here
+				throw domain_error("Expected token `" + *ref->name() + "`, got `" + token.type + "`: '" + token.raw + "'");
+			}
+
+			children.push_back(new AST::LeafNode<string>(token.type, new string(token.raw)));
+		} else if (part->type == "primitive::rule_rule_ref") {
+			AST::RuleRuleRefNode* ref = part->as<AST::RuleRuleRefNode>();
+
+			if (rules.count(*ref->name())) {
+				children.push_back(parse(tokens, rules.at(*ref->name()), rules));
+			} else {
+				// TODO: putback consumed here
+				throw domain_error("Unknown production `" + *ref->name() + "`");
+			}
+		} else if (part->type == "primitive::rule_repeat") {
+			AST::BodyNode* body = part->as<AST::RuleRepeatNode>()->children()[0]->as<AST::BodyNode>();
+			set<string> FIRST = utils::findFIRSTSet(body, rules);
+			token = tokens.peek();
+
+			while (token.type == "raw" ? FIRST.count(token.raw) : FIRST.count("token::" + token.type)) {
+				AST::InternalNode* temp = parse(tokens, "", body, rules)->as<AST::InternalNode>();
+
+				for (auto child : temp->children()) {
+					children.push_back(child);
+				}
+
+				token = tokens.peek();
+				temp->children().clear();
+				delete temp;
+			}
+		} else if (part->type == "primitive::rule_optional") {
+			AST::BodyNode* body = part->as<AST::RuleRepeatNode>()->children()[0]->as<AST::BodyNode>();
+			set<string> FIRST = utils::findFIRSTSet(body, rules);
+			token = tokens.peek();
+
+			if (token.type == "raw" ? FIRST.count(token.raw) : FIRST.count("token::" + token.type)) {
+				AST::InternalNode* temp = parse(tokens, "", body, rules)->as<AST::InternalNode>();
+
+				for (auto child : temp->children()) {
+					children.push_back(child);
+				}
+
+				temp->children().clear();
+				delete temp;
+			}
+		}
+	}
+
+	return new AST::InternalNode(name, children);
+}
+
+set<string> parser::utils::findFIRSTSet(AST::Node* node, const map<string, AST::RuleNode*>& rules) {
+	if (node->type == "primitive::rule") {
+		set<string> FIRST;
+
+		for (auto child : node->as<AST::RuleNode>()->children()) {
+			for (auto first : findFIRSTSet(child, rules)) {
+				FIRST.emplace(first);
+			}
+		}
+
+		return FIRST;
+	} else if (node->type == "primitive::body") {
+		return findFIRSTSet(node->as<AST::BodyNode>()->children()[0], rules);
+	} else if (node->type == "primitive::rule_token_ref") {
+		set<string> FIRST;
+		FIRST.emplace("token::" + *node->as<AST::RuleTokenRefNode>()->name());
+
+		return FIRST;
+	} else if (node->type == "primitive::rule_rule_ref") {
+		return findFIRSTSet(rules.at(*node->as<AST::RuleRuleRefNode>()->name()), rules);
+	} else if (node->type == "primitive::rule_repeat") {
+		return findFIRSTSet(node->as<AST::RuleRepeatNode>()->children()[0], rules);
+	} else if (node->type == "primitive::rule_optional") {
+		return findFIRSTSet(node->as<AST::RuleOptionalNode>()->children()[0], rules);
+	} else if (node->type == "primitive::rule_literal") {
+		set<string> FIRST;
+		FIRST.emplace(string(1, (*node->as<AST::RuleLiteralNode>()->str())[0]));
+
+		return FIRST;
+	} else {
+		return set<string>();
 	}
 }
 

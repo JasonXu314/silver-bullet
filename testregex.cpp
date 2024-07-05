@@ -12,7 +12,7 @@ int main() {
 	vector<AST::PatternNode*> patterns;
 
 	while (tokens) {
-		AST::PatternNode* pattern = parsePattern(tokens);
+		AST::PatternNode* pattern = parsePatternDecl(tokens);
 		patterns.push_back(pattern);
 
 		deref(pattern, patterns);
