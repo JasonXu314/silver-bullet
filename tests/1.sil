@@ -6,27 +6,50 @@
 !!!P ALPHA [a-zA-Z]
 !!!P ALNUM [a-zA-Z0-9]
 
-!!!T KEYWORD IF|THEN|ELSE|WHILE|DO|END|END.|WRITE|RETURN
+!!!T KEYWORD WHILE|DO|WRITE
+!!!T IF IF
+!!!T THEN THEN
+!!!T ELSE ELSE
+!!!T END END
+!!!T RETURN RETURN
 !!!T FN FUNCTION
+!!!T FN_END END.
 !!!T LPAREN \(
 !!!T RPAREN \)
 !!!T SC ;
 !!!T COMMA ,
 !!!T ASSIGN :=
-!!!T GT >
 !!!T IDENT {ALPHA}(_|{ALNUM})*
 !!!T INT {INT}
 !!!T DEC {DEC}
 !!!T SCI ({DEC}|{INT})e\+{NZINT}
 
-!!!R FUNCTION => token::FN {token::primitive::ws} token::IDENT token::LPAREN [token::IDENT {token::COMMA {token::primitive::ws} token::IDENT}] token::RPAREN;
+!!!T MULT_OP (\*|/|AND|DIV|MOD)
+!!!T ADD_OP (\+|OR|&|-)
+!!!T REL_OP (<|>|#|=)
+
+!!!R FACTOR => token::INT | token::DEC | token::IDENT;
+!!!R TERM => rule::FACTOR {token::primitive::ws} {token::MULT_OP {token::primitive::ws} rule::FACTOR {token::primitive::ws}};
+!!!R S_EXPR => rule::TERM {token::primitive::ws} {token::ADD_OP {token::primitive::ws} rule::TERM {token::primitive::ws}};
+!!!R EXPRESSION => rule::S_EXPR {token::primitive::ws} [token::REL_OP {token::primitive::ws} rule::S_EXPR {token::primitive::ws}];
+
+!!!R ASSIGNMENT => token::IDENT {token::primitive::ws} token::ASSIGN {token::primitive::ws} rule::EXPRESSION;
+!!!R IF_STMT => token::IF {token::primitive::ws} rule::EXPRESSION {token::primitive::ws} token::THEN {token::primitive::ws} rule::STMT_SEQ {token::primitive::ws} token::END;
+!!!R STATEMENT => rule::ASSIGNMENT | rule::IF_STMT;
+!!!R STMT_SEQ => {token::primitive::ws} rule::STATEMENT {token::primitive::ws} {token::SC {token::primitive::ws} rule::STATEMENT {token::primitive::ws}};
+
+!!!R RET_STMT => token::RETURN {token::primitive::ws} token::IDENT;
+
+!!!R PARAM_SEQ => {token::primitive::ws} token::IDENT {token::primitive::ws} {token::COMMA {token::primitive::ws} token::IDENT} {token::primitive::ws};
+!!!R FN_BODY => token::SC | rule::STMT_SEQ {token::primitive::ws} [rule::RET_STMT] {token::primitive::ws} token::FN_END;
+!!!R FUNCTION => token::FN {token::primitive::ws} token::IDENT token::LPAREN [rule::PARAM_SEQ] token::RPAREN {token::primitive::ws} rule::FN_BODY {token::primitive::ws};
 
 FUNCTION max(a, b, c)
-	beeg := a
+	beeg := a;
 
 	IF b > beeg THEN
 		beeg := b
-	END
+	END;
 
 	IF c > beeg THEN
 		beeg := c

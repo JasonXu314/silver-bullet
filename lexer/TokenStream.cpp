@@ -88,12 +88,18 @@ Token TokenStream::read(bool raw) {
 	}
 }
 
-void TokenStream::putback(const Token& tok) {
+void TokenStream::pack() {
 	if (_dirty) {
 		for (auto it = _currTok.raw.rbegin(); it != _currTok.raw.rend(); it++) {
 			_stream.putback(*it);
 		}
+
+		_dirty = false;
 	}
+}
+
+void TokenStream::putback(const Token& tok) {
+	pack();
 
 	_currTok = tok;
 	_dirty = true;

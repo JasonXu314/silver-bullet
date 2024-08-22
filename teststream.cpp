@@ -41,33 +41,52 @@ int main() {
 			names.insert(names.end() - 1, tokNode->name());
 
 			tokens.updateTables(makeTables(rules, patterns), names);
+			cout << "parsed token " << tokNode->name() << endl;
 		} else if (tokens.peek().type == "primitive::pattern") {
 			AST::PatternNode* patNode = parsePatternDecl(tokens);
 
 			patterns.push_back(patNode);
+			cout << "parsed pattern " << patNode->name() << endl;
 		} else if (tokens.peek().type == "primitive::rule") {
 			AST::RuleNode* ruleNode = parseRuleDecl(tokens);
 
 			productions.emplace(ruleNode->name(), ruleNode);
-			FIRSTs.emplace(ruleNode->name(), utils::findFIRSTSet(ruleNode, productions));
+			cout << "parsed rule " << ruleNode->name() << endl;
 		} else {
 			Token tok = tokens.peek();
 
 			AST::RuleNode* match = nullptr;
+			for (auto [name, production] : productions) {
+				if (FIRSTs.count(name)) {
+					set<string> FIRST = FIRSTs.at(name);
 
-			for (auto [name, FIRST] : FIRSTs) {
-				if (tok.type == "raw" ? FIRST.count(tok.raw) : FIRST.count("token::" + tok.type)) {
-					match = productions.at(name);
-					break;
+					if (tok.type == "raw" ? FIRST.count(tok.raw) : FIRST.count("token::" + tok.type)) {
+						match = productions.at(name);
+					}
+				} else {
+					set<string> FIRST = utils::findFIRSTSet(production, productions);
+					FIRSTs.emplace(name, FIRST);
+
+					if (tok.type == "raw" ? FIRST.count(tok.raw) : FIRST.count("token::" + tok.type)) {
+						match = productions.at(name);
+					}
+				}
+
+				if (match != nullptr) {
+					cout << "attempting parsing rule: " << match->name() << endl;
+					try {
+						AST::Node* node = parse(tokens, match, productions);
+
+						cout << node << endl;
+						delete node;
+						break;
+					} catch (...) {
+						cout << "failed" << endl;
+					}
 				}
 			}
 
-			if (match != nullptr) {
-				AST::Node* node = parse(tokens, match, productions);
-
-				cout << node << endl;
-				delete node;
-			} else {
+			if (match == nullptr) {
 				if (tok.type != "primitive::ws") cout << tok.type << ": " << fix(tok.raw) << "$" << endl;
 				tokens.read();
 			}

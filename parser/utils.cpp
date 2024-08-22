@@ -534,6 +534,13 @@ AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
 	vector<AST::Node*> bodies;
 
 	do {
+		if (token.raw[0] == '|') {
+			do {
+				tokens.read(true);
+				token = tokens.peek(true);
+			} while (isspace(token.raw[0]) && token.raw[0] != '\n');
+		}
+
 		AST::BodyNode* body = parseRuleBody(tokens);
 		bodies.push_back(body);
 
@@ -717,7 +724,7 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, AST::RuleNode* rule
 		try {
 			return parse(tokens, rule->name(), child->as<AST::BodyNode>(), rules);
 		} catch (exception& e) {
-			cout << "Got error: " << e.what() << endl;
+			// cout << "Got error: " << e.what() << endl;
 		}
 	}
 
@@ -732,41 +739,67 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name,
 
 	for (auto part : body->children()) {
 		if (part->type == "primitive::rule_literal") {
+			// cout << "part literal" << endl;
 			AST::RuleLiteralNode* literal = part->as<AST::RuleLiteralNode>();
 
 			for (char c : *literal->str()) {
 				token = tokens.read(true);
 
 				if (c != token.raw[0]) {
+					while (!consumed.empty()) {
+						tokens.putback(consumed.top());
+						consumed.pop();
+					}
+
+					tokens.pack();
 					throw domain_error("Expected literal `" + *literal->str() + "`");
 				}
+
+				consumed.push(token);
 			}
 
 			children.push_back(new AST::LeafNode<string>("primitive::literal", new string(*literal->str())));
 		} else if (part->type == "primitive::rule_token_ref") {
 			AST::RuleTokenRefNode* ref = part->as<AST::RuleTokenRefNode>();
+			// cout << "part tok ref: " << *ref->name() << endl;
 
 			token = tokens.read();
+			consumed.push(token);
 
 			if (token.type != *ref->name()) {
-				// TODO: putback consumed here
+				while (!consumed.empty()) {
+					tokens.putback(consumed.top());
+					consumed.pop();
+				}
+
+				tokens.pack();
 				throw domain_error("Expected token `" + *ref->name() + "`, got `" + token.type + "`: '" + token.raw + "'");
 			}
+			// else {
+			// 	cout << "read tok " << token.type << ": " << token.raw << endl;
+			// }
 
 			children.push_back(new AST::LeafNode<string>(token.type, new string(token.raw)));
 		} else if (part->type == "primitive::rule_rule_ref") {
 			AST::RuleRuleRefNode* ref = part->as<AST::RuleRuleRefNode>();
+			// cout << "part rule ref: " << *ref->name() << endl;
 
 			if (rules.count(*ref->name())) {
 				children.push_back(parse(tokens, rules.at(*ref->name()), rules));
 			} else {
-				// TODO: putback consumed here
+				while (!consumed.empty()) {
+					tokens.putback(consumed.top());
+					consumed.pop();
+				}
+
+				tokens.pack();
 				throw domain_error("Unknown production `" + *ref->name() + "`");
 			}
 		} else if (part->type == "primitive::rule_repeat") {
 			AST::BodyNode* body = part->as<AST::RuleRepeatNode>()->children()[0]->as<AST::BodyNode>();
 			set<string> FIRST = utils::findFIRSTSet(body, rules);
 			token = tokens.peek();
+			// cout << "part repeat" << endl;
 
 			while (token.type == "raw" ? FIRST.count(token.raw) : FIRST.count("token::" + token.type)) {
 				AST::InternalNode* temp = parse(tokens, "", body, rules)->as<AST::InternalNode>();
@@ -783,8 +816,10 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name,
 			AST::BodyNode* body = part->as<AST::RuleRepeatNode>()->children()[0]->as<AST::BodyNode>();
 			set<string> FIRST = utils::findFIRSTSet(body, rules);
 			token = tokens.peek();
+			// cout << "part optional" << endl;
 
 			if (token.type == "raw" ? FIRST.count(token.raw) : FIRST.count("token::" + token.type)) {
+				// cout << "found: " << token.type << endl;
 				AST::InternalNode* temp = parse(tokens, "", body, rules)->as<AST::InternalNode>();
 
 				for (auto child : temp->children()) {
@@ -794,6 +829,9 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name,
 				temp->children().clear();
 				delete temp;
 			}
+			// else {
+			// 	cout << "not found: " << token.type << endl;
+			// }
 		}
 	}
 
@@ -812,7 +850,24 @@ set<string> parser::utils::findFIRSTSet(AST::Node* node, const map<string, AST::
 
 		return FIRST;
 	} else if (node->type == "primitive::body") {
-		return findFIRSTSet(node->as<AST::BodyNode>()->children()[0], rules);
+		set<string> FIRST;
+		AST::BodyNode* body = node->as<AST::BodyNode>();
+		vector<AST::Node*>::iterator it;
+
+		for (it = body->children().begin();
+			 it != body->children().end() && ((*it)->type == "primitive::rule_repeat" || (*it)->type == "primitive::rule_optional"); it++) {
+			for (auto str : findFIRSTSet(*it, rules)) {
+				FIRST.emplace(str);
+			}
+		}
+
+		if (it != body->children().end()) {
+			for (auto str : findFIRSTSet(*it, rules)) {
+				FIRST.emplace(str);
+			}
+		}
+
+		return FIRST;
 	} else if (node->type == "primitive::rule_token_ref") {
 		set<string> FIRST;
 		FIRST.emplace("token::" + *node->as<AST::RuleTokenRefNode>()->name());

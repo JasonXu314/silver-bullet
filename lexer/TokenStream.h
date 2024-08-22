@@ -36,6 +36,8 @@ public:
 
 	Token read(bool raw = false);
 
+	void pack();
+
 	void putback(const Token& tok);
 
 	operator bool() const;
