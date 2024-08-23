@@ -6,11 +6,14 @@
 !!!P ALPHA [a-zA-Z]
 !!!P ALNUM [a-zA-Z0-9]
 
-!!!T KEYWORD WHILE|DO|WRITE
 !!!T IF IF
 !!!T THEN THEN
 !!!T ELSE ELSE
 !!!T END END
+!!!T WRITE WRITE
+!!!T WHILE WHILE
+!!!T DO DO
+!!!T ELSIF ELSIF
 !!!T RETURN RETURN
 !!!T FN FUNCTION
 !!!T FN_END END.
@@ -28,21 +31,23 @@
 !!!T ADD_OP (\+|OR|&|-)
 !!!T REL_OP (<|>|#|=)
 
-!!!R FACTOR => token::INT | token::DEC | token::IDENT;
-!!!R TERM => rule::FACTOR {token::primitive::ws} {token::MULT_OP {token::primitive::ws} rule::FACTOR {token::primitive::ws}};
-!!!R S_EXPR => rule::TERM {token::primitive::ws} {token::ADD_OP {token::primitive::ws} rule::TERM {token::primitive::ws}};
-!!!R EXPRESSION => rule::S_EXPR {token::primitive::ws} [token::REL_OP {token::primitive::ws} rule::S_EXPR {token::primitive::ws}];
+!!!R FACTOR => token::INT | token::DEC | token::IDENT | token::LPAREN rule::EXPRESSION token::RPAREN;
+!!!R TERM => rule::FACTOR {token::MULT_OP rule::FACTOR};
+!!!R S_EXPR => rule::TERM {token::ADD_OP rule::TERM};
+!!!R EXPRESSION => rule::S_EXPR [token::REL_OP rule::S_EXPR];
 
-!!!R ASSIGNMENT => token::IDENT {token::primitive::ws} token::ASSIGN {token::primitive::ws} rule::EXPRESSION;
-!!!R IF_STMT => token::IF {token::primitive::ws} rule::EXPRESSION {token::primitive::ws} token::THEN {token::primitive::ws} rule::STMT_SEQ {token::primitive::ws} token::END;
-!!!R STATEMENT => rule::ASSIGNMENT | rule::IF_STMT;
-!!!R STMT_SEQ => {token::primitive::ws} rule::STATEMENT {token::primitive::ws} {token::SC {token::primitive::ws} rule::STATEMENT {token::primitive::ws}};
+!!!R ASSIGNMENT => token::IDENT token::ASSIGN rule::EXPRESSION;
+!!!R WRITE_STMT => token::WRITE token::LPAREN rule::EXPRESSION token::RPAREN;
+!!!R IF_STMT => token::IF rule::EXPRESSION token::THEN rule::STMT_SEQ token::END;
+!!!R WHILE_STMT => token::WHILE rule::EXPRESSION token::DO rule::STMT_SEQ {token::ELSIF rule::EXPRESSION token::DO rule::STMT_SEQ} token::END;
+!!!R STATEMENT => rule::ASSIGNMENT | rule::IF_STMT | rule::WHILE_STMT | rule::WRITE_STMT;
+!!!R STMT_SEQ => rule::STATEMENT {token::SC rule::STATEMENT};
 
-!!!R RET_STMT => token::RETURN {token::primitive::ws} token::IDENT;
+!!!R RET_STMT => token::RETURN rule::EXPRESSION;
 
-!!!R PARAM_SEQ => {token::primitive::ws} token::IDENT {token::primitive::ws} {token::COMMA {token::primitive::ws} token::IDENT} {token::primitive::ws};
-!!!R FN_BODY => token::SC | rule::STMT_SEQ {token::primitive::ws} [rule::RET_STMT] {token::primitive::ws} token::FN_END;
-!!!R FUNCTION => token::FN {token::primitive::ws} token::IDENT token::LPAREN [rule::PARAM_SEQ] token::RPAREN {token::primitive::ws} rule::FN_BODY {token::primitive::ws};
+!!!R PARAM_SEQ => token::IDENT {token::COMMA token::IDENT};
+!!!R FN_BODY => token::SC | rule::STMT_SEQ [rule::RET_STMT] token::FN_END;
+!!!R FUNCTION => token::FN token::IDENT token::LPAREN [rule::PARAM_SEQ] token::RPAREN rule::FN_BODY;
 
 FUNCTION max(a, b, c)
 	beeg := a;
@@ -53,7 +58,21 @@ FUNCTION max(a, b, c)
 
 	IF c > beeg THEN
 		beeg := c
-	END
+	END;
+
+	WRITE ( beeg )
 
 	RETURN beeg
+END.
+
+FUNCTION fibo(n)
+  x := 1 ;
+  y := 2 ;
+  c := 3 ;
+  WHILE c < n DO 
+    x := x + y ;
+    y := x - y ;
+    c := c + 1 
+  END
+  RETURN ( x )
 END.

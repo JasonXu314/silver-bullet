@@ -73,15 +73,15 @@ int main() {
 				}
 
 				if (match != nullptr) {
-					cout << "attempting parsing rule: " << match->name() << endl;
+					cout << "attempting parsing rule: " << match->name() << " on " << tok.type << endl;
 					try {
 						AST::Node* node = parse(tokens, match, productions);
 
 						cout << node << endl;
 						delete node;
 						break;
-					} catch (...) {
-						cout << "failed" << endl;
+					} catch (exception& e) {
+						// cout << "failed: " << e.what() << endl;
 					}
 				}
 			}

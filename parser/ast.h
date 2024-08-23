@@ -146,7 +146,12 @@ private:
 
 class BodyNode : public InternalNode {
 public:
-	BodyNode(const std::vector<Node*>& children) : InternalNode("primitive::body", children) {}
+	BodyNode(const std::vector<Node*>& children, bool exact) : InternalNode("primitive::body", children), _exact(exact) {}
+
+	bool exact() const { return _exact; }
+
+private:
+	bool _exact;
 };
 
 class RuleLiteralNode : public LeafNode<std::string> {

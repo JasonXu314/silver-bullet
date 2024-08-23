@@ -484,6 +484,7 @@ AST::RegexRangeNode* parser::parseRange(lexer::TokenStream& tokens) {
 
 AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
 	lexer::Token token = tokens.peek();
+	bool exact = false;
 
 	if (token.type != "primitive::rule") throw domain_error("Expected '!!!R', got '" + token.raw + "'");
 
@@ -519,10 +520,17 @@ AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
 	tokens.read(true);
 	token = tokens.peek(true);
 
-	if (token.raw[0] != '>') throw domain_error("Expected '=>'");
+	if (token.raw[0] != '>') throw domain_error("Expected '=>' or '=>>'");
 
 	tokens.read(true);
 	token = tokens.peek(true);
+
+	if (token.raw[0] == '>') {
+		exact = true;
+
+		tokens.read(true);
+		token = tokens.peek(true);
+	}
 
 	if (!(isspace(token.raw[0]) && token.raw[0] != '\n')) throw domain_error("Expected whitespace");
 
@@ -541,7 +549,7 @@ AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
 			} while (isspace(token.raw[0]) && token.raw[0] != '\n');
 		}
 
-		AST::BodyNode* body = parseRuleBody(tokens);
+		AST::BodyNode* body = parseRuleBody(tokens, exact);
 		bodies.push_back(body);
 
 		token = tokens.peek(true);
@@ -565,7 +573,7 @@ AST::RuleNode* parser::parseRuleDecl(lexer::TokenStream& tokens) {
 	}
 }
 
-AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end) {
+AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end, bool exact) {
 	lexer::Token token = tokens.peek(true);
 
 	vector<AST::Node*> parts;
@@ -671,7 +679,7 @@ AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end) {
 				token = tokens.peek(true);
 			}
 
-			AST::BodyNode* body = parseRuleBody(tokens, '}');
+			AST::BodyNode* body = parseRuleBody(tokens, '}', exact);
 
 			parts.push_back(new AST::RuleRepeatNode(body));
 			token = tokens.peek(true);
@@ -691,7 +699,7 @@ AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end) {
 				token = tokens.peek(true);
 			}
 
-			AST::BodyNode* body = parseRuleBody(tokens, ']');
+			AST::BodyNode* body = parseRuleBody(tokens, ']', exact);
 
 			parts.push_back(new AST::RuleOptionalNode(body));
 			token = tokens.peek(true);
@@ -716,12 +724,13 @@ AST::BodyNode* parser::parseRuleBody(lexer::TokenStream& tokens, char end) {
 		}
 	} while (token.raw[0] != '|' && token.raw[0] != ';' && (end == '\0' || token.raw[0] != end));
 
-	return new AST::BodyNode(parts);
+	return new AST::BodyNode(parts, exact);
 }
 
 AST::InternalNode* parser::parse(lexer::TokenStream& tokens, AST::RuleNode* rule, const map<string, AST::RuleNode*>& rules) {
 	for (auto child : rule->children()) {
 		try {
+			// cout << "parsing as: " << rule->name() << endl;
 			return parse(tokens, rule->name(), child->as<AST::BodyNode>(), rules);
 		} catch (exception& e) {
 			// cout << "Got error: " << e.what() << endl;
@@ -737,7 +746,14 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name,
 
 	vector<AST::Node*> children;
 
-	for (auto part : body->children()) {
+	if (!body->children().empty() &&
+		(body->children()[0]->type != "primitive::rule_token_ref" || *body->children()[0]->as<AST::RuleTokenRefNode>()->name() != "primitive::ws")) {
+		while (tokens.peek().type == "primitive::ws") tokens.read();
+	}
+
+	for (size_t i = 0; i < body->children().size(); i++) {
+		auto part = body->children()[i];
+
 		if (part->type == "primitive::rule_literal") {
 			// cout << "part literal" << endl;
 			AST::RuleLiteralNode* literal = part->as<AST::RuleLiteralNode>();
@@ -833,7 +849,14 @@ AST::InternalNode* parser::parse(lexer::TokenStream& tokens, const string& name,
 			// 	cout << "not found: " << token.type << endl;
 			// }
 		}
+
+		if (i + 1 < body->children().size() && (body->children()[i + 1]->type != "primitive::rule_token_ref" ||
+												*body->children()[i + 1]->as<AST::RuleTokenRefNode>()->name() != "primitive::ws")) {
+			while (tokens.peek().type == "primitive::ws") tokens.read();
+		}
 	}
+
+	// TODO: add follow set computation so that we can know whether to consume whitespace here
 
 	return new AST::InternalNode(name, children);
 }

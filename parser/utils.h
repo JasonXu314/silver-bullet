@@ -20,7 +20,7 @@ AST::RegexRangeNode* parseRange(lexer::TokenStream& tokens);
 
 AST::RuleNode* parseRuleDecl(lexer::TokenStream& tokens);
 
-AST::BodyNode* parseRuleBody(lexer::TokenStream& tokens, char end = '\0');
+AST::BodyNode* parseRuleBody(lexer::TokenStream& tokens, char end = '\0', bool exact = false);
 
 AST::InternalNode* parse(lexer::TokenStream& tokens, AST::RuleNode* rule, const std::map<std::string, AST::RuleNode*>& rules);
 

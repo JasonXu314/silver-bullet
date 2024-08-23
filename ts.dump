@@ -5,11 +5,14 @@ parsed pattern DEC
 parsed pattern TEST
 parsed pattern ALPHA
 parsed pattern ALNUM
-parsed token KEYWORD
 parsed token IF
 parsed token THEN
 parsed token ELSE
 parsed token END
+parsed token WRITE
+parsed token WHILE
+parsed token DO
+parsed token ELSIF
 parsed token RETURN
 parsed token FN
 parsed token FN_END
@@ -30,160 +33,217 @@ parsed rule TERM
 parsed rule S_EXPR
 parsed rule EXPRESSION
 parsed rule ASSIGNMENT
+parsed rule WRITE_STMT
 parsed rule IF_STMT
+parsed rule WHILE_STMT
 parsed rule STATEMENT
 parsed rule STMT_SEQ
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
 parsed rule RET_STMT
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
 parsed rule PARAM_SEQ
 parsed rule FN_BODY
 parsed rule FUNCTION
-attempting parsing rule: FN_BODY
-failed
-attempting parsing rule: FN_BODY
-failed
-attempting parsing rule: FN_BODY
-failed
-attempting parsing rule: PARAM_SEQ
-failed
-attempting parsing rule: PARAM_SEQ
-failed
-attempting parsing rule: PARAM_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: STMT_SEQ
-failed
-attempting parsing rule: FUNCTION
+attempting parsing rule: FUNCTION on FN
 PARENT: FUNCTION
     LEAF: FN
-    LEAF: primitive::ws
     LEAF: IDENT
     LEAF: LPAREN
     PARENT: PARAM_SEQ
         LEAF: IDENT
         LEAF: COMMA
-        LEAF: primitive::ws
         LEAF: IDENT
         LEAF: COMMA
-        LEAF: primitive::ws
         LEAF: IDENT
     LEAF: RPAREN
-    LEAF: primitive::ws
-    LEAF: primitive::ws
     PARENT: FN_BODY
         PARENT: STMT_SEQ
             PARENT: STATEMENT
                 PARENT: ASSIGNMENT
                     LEAF: IDENT
-                    LEAF: primitive::ws
                     LEAF: ASSIGN
-                    LEAF: primitive::ws
                     PARENT: EXPRESSION
                         PARENT: S_EXPR
                             PARENT: TERM
                                 PARENT: FACTOR
                                     LEAF: IDENT
             LEAF: SC
-            LEAF: primitive::ws
-            LEAF: primitive::ws
-            LEAF: primitive::ws
             PARENT: STATEMENT
                 PARENT: IF_STMT
                     LEAF: IF
-                    LEAF: primitive::ws
                     PARENT: EXPRESSION
                         PARENT: S_EXPR
                             PARENT: TERM
                                 PARENT: FACTOR
                                     LEAF: IDENT
-                                LEAF: primitive::ws
                         LEAF: REL_OP
-                        LEAF: primitive::ws
                         PARENT: S_EXPR
                             PARENT: TERM
                                 PARENT: FACTOR
                                     LEAF: IDENT
-                                LEAF: primitive::ws
                     LEAF: THEN
-                    LEAF: primitive::ws
-                    LEAF: primitive::ws
-                    LEAF: primitive::ws
                     PARENT: STMT_SEQ
                         PARENT: STATEMENT
                             PARENT: ASSIGNMENT
                                 LEAF: IDENT
-                                LEAF: primitive::ws
                                 LEAF: ASSIGN
-                                LEAF: primitive::ws
                                 PARENT: EXPRESSION
                                     PARENT: S_EXPR
                                         PARENT: TERM
                                             PARENT: FACTOR
                                                 LEAF: IDENT
-                                            LEAF: primitive::ws
-                                            LEAF: primitive::ws
                     LEAF: END
             LEAF: SC
-            LEAF: primitive::ws
-            LEAF: primitive::ws
-            LEAF: primitive::ws
             PARENT: STATEMENT
                 PARENT: IF_STMT
                     LEAF: IF
-                    LEAF: primitive::ws
                     PARENT: EXPRESSION
                         PARENT: S_EXPR
                             PARENT: TERM
                                 PARENT: FACTOR
                                     LEAF: IDENT
-                                LEAF: primitive::ws
                         LEAF: REL_OP
-                        LEAF: primitive::ws
                         PARENT: S_EXPR
                             PARENT: TERM
                                 PARENT: FACTOR
                                     LEAF: IDENT
-                                LEAF: primitive::ws
                     LEAF: THEN
-                    LEAF: primitive::ws
-                    LEAF: primitive::ws
-                    LEAF: primitive::ws
                     PARENT: STMT_SEQ
                         PARENT: STATEMENT
                             PARENT: ASSIGNMENT
                                 LEAF: IDENT
-                                LEAF: primitive::ws
                                 LEAF: ASSIGN
-                                LEAF: primitive::ws
                                 PARENT: EXPRESSION
                                     PARENT: S_EXPR
                                         PARENT: TERM
                                             PARENT: FACTOR
                                                 LEAF: IDENT
-                                            LEAF: primitive::ws
-                                            LEAF: primitive::ws
                     LEAF: END
-            LEAF: primitive::ws
-            LEAF: primitive::ws
-            LEAF: primitive::ws
+            LEAF: SC
+            PARENT: STATEMENT
+                PARENT: WRITE_STMT
+                    LEAF: WRITE
+                    LEAF: LPAREN
+                    PARENT: EXPRESSION
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: IDENT
+                    LEAF: RPAREN
         PARENT: RET_STMT
             LEAF: RETURN
-            LEAF: primitive::ws
-            LEAF: IDENT
-        LEAF: primitive::ws
+            PARENT: EXPRESSION
+                PARENT: S_EXPR
+                    PARENT: TERM
+                        PARENT: FACTOR
+                            LEAF: IDENT
         LEAF: FN_END
-    LEAF: primitive::ws
+attempting parsing rule: FUNCTION on FN
+PARENT: FUNCTION
+    LEAF: FN
+    LEAF: IDENT
+    LEAF: LPAREN
+    PARENT: PARAM_SEQ
+        LEAF: IDENT
+    LEAF: RPAREN
+    PARENT: FN_BODY
+        PARENT: STMT_SEQ
+            PARENT: STATEMENT
+                PARENT: ASSIGNMENT
+                    LEAF: IDENT
+                    LEAF: ASSIGN
+                    PARENT: EXPRESSION
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: INT
+            LEAF: SC
+            PARENT: STATEMENT
+                PARENT: ASSIGNMENT
+                    LEAF: IDENT
+                    LEAF: ASSIGN
+                    PARENT: EXPRESSION
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: INT
+            LEAF: SC
+            PARENT: STATEMENT
+                PARENT: ASSIGNMENT
+                    LEAF: IDENT
+                    LEAF: ASSIGN
+                    PARENT: EXPRESSION
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: INT
+            LEAF: SC
+            PARENT: STATEMENT
+                PARENT: WHILE_STMT
+                    LEAF: WHILE
+                    PARENT: EXPRESSION
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: IDENT
+                        LEAF: REL_OP
+                        PARENT: S_EXPR
+                            PARENT: TERM
+                                PARENT: FACTOR
+                                    LEAF: IDENT
+                    LEAF: DO
+                    PARENT: STMT_SEQ
+                        PARENT: STATEMENT
+                            PARENT: ASSIGNMENT
+                                LEAF: IDENT
+                                LEAF: ASSIGN
+                                PARENT: EXPRESSION
+                                    PARENT: S_EXPR
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: IDENT
+                                        LEAF: ADD_OP
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: IDENT
+                        LEAF: SC
+                        PARENT: STATEMENT
+                            PARENT: ASSIGNMENT
+                                LEAF: IDENT
+                                LEAF: ASSIGN
+                                PARENT: EXPRESSION
+                                    PARENT: S_EXPR
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: IDENT
+                                        LEAF: ADD_OP
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: IDENT
+                        LEAF: SC
+                        PARENT: STATEMENT
+                            PARENT: ASSIGNMENT
+                                LEAF: IDENT
+                                LEAF: ASSIGN
+                                PARENT: EXPRESSION
+                                    PARENT: S_EXPR
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: IDENT
+                                        LEAF: ADD_OP
+                                        PARENT: TERM
+                                            PARENT: FACTOR
+                                                LEAF: INT
+                    LEAF: END
+        PARENT: RET_STMT
+            LEAF: RETURN
+            PARENT: EXPRESSION
+                PARENT: S_EXPR
+                    PARENT: TERM
+                        PARENT: FACTOR
+                            LEAF: LPAREN
+                            PARENT: EXPRESSION
+                                PARENT: S_EXPR
+                                    PARENT: TERM
+                                        PARENT: FACTOR
+                                            LEAF: IDENT
+                            LEAF: RPAREN
+        LEAF: FN_END
